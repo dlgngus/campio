@@ -53,7 +53,7 @@ export default function MentorsPage() {
           onAction={() => loadMentors()}
         />
       ) : !mentors.length ? (
-        <EmptyState title={t("common.emptyTitle")} description={t("common.emptyDescription")} />
+        <EmptyState title={t("mentors.emptyTitle")} description={t("mentors.emptyDescription")} />
       ) : (
         <div className="simple-grid">
           {mentors.map((mentor) => (

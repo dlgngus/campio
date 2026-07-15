@@ -14,6 +14,7 @@ import LoadingSkeleton from "../components/common/LoadingSkeleton.jsx";
 import { communityApi } from "../api/communityApi.js";
 import { mentorApi } from "../api/mentorApi.js";
 import { opportunityApi } from "../api/opportunityApi.js";
+import { applicationApi } from "../api/applicationApi.js";
 import { savedApi } from "../api/savedApi.js";
 import { isApiStatus } from "../api/client.js";
 import { setAuthenticated } from "../app/authSession.js";
@@ -31,6 +32,8 @@ export default function OpportunityDetailPage() {
   const [opportunity, setOpportunity] = useState(null);
   const [saved, setSaved] = useState(false);
   const [status, setStatus] = useState("Interested");
+  const [applicationRecordId, setApplicationRecordId] = useState(null);
+  const [recordSaving, setRecordSaving] = useState(false);
   const [related, setRelated] = useState([]);
   const [relatedPosts, setRelatedPosts] = useState([]);
   const [mentors, setMentors] = useState([]);
@@ -51,6 +54,20 @@ export default function OpportunityDetailPage() {
       if (!shouldUpdate()) return;
       setOpportunity(detail);
       setSaved(detail.saved);
+      try {
+        const records = await applicationApi.list();
+        const record = records.find((item) => String(item.opportunityId) === String(detail.id));
+        if (record) {
+          setApplicationRecordId(record.id);
+          setStatus(record.status || "Interested");
+        } else {
+          setApplicationRecordId(null);
+          setStatus("Interested");
+        }
+      } catch (recordError) {
+        setApplicationRecordId(null);
+        setStatus("Interested");
+      }
       setRelated(
         allOpportunities
           .filter(isStudentRelevantOpportunity)
@@ -93,6 +110,35 @@ export default function OpportunityDetailPage() {
   }
 
   const displayLocation = resolveOpportunityLocation(opportunity);
+  const fallback = t("detail.sourceFallback");
+  const displayPeriod = [opportunity.startDate, opportunity.endDate].filter(Boolean).join(" - ") || fallback;
+
+  async function handleStatusChange(nextStatus) {
+    if (recordSaving || nextStatus === status) return;
+    const previousStatus = status;
+    const previousId = applicationRecordId;
+    setStatus(nextStatus);
+    setRecordSaving(true);
+    setError("");
+    try {
+      const body = { status: nextStatus, memo: "" };
+      const record = previousId
+        ? await applicationApi.update(previousId, body)
+        : await applicationApi.saveForOpportunity(opportunity.id, body);
+      setApplicationRecordId(record.id);
+    } catch (err) {
+      setStatus(previousStatus);
+      setApplicationRecordId(previousId);
+      if (isApiStatus(err, 401)) {
+        setAuthenticated(false);
+        navigate("/login");
+        return;
+      }
+      setError(err.message || t("common.errorDescription"));
+    } finally {
+      setRecordSaving(false);
+    }
+  }
 
   return (
     <div className="page stack">
@@ -104,7 +150,7 @@ export default function OpportunityDetailPage() {
           <div className="featured-opportunity__meta">
             <DeadlineBadge deadline={opportunity.deadline} />
             <span>{labelLocation(displayLocation)}</span>
-            <span>{opportunity.isOnline ? t("filters.online") : "Offline"}</span>
+            <span>{opportunity.isOnline ? t("filters.online") : t("filters.offline")}</span>
           </div>
         </div>
         <div className="detail-actions">
@@ -150,7 +196,7 @@ export default function OpportunityDetailPage() {
       <section className="info-grid">
         <div className="info-item">
           <span>{t("detail.deadline")}</span>
-          <strong>{opportunity.deadline}</strong>
+          <strong>{opportunity.deadline || fallback}</strong>
         </div>
         <div className="info-item">
           <span>{t("detail.location")}</span>
@@ -158,13 +204,11 @@ export default function OpportunityDetailPage() {
         </div>
         <div className="info-item">
           <span>{t("detail.period")}</span>
-          <strong>
-            {opportunity.startDate} - {opportunity.endDate}
-          </strong>
+          <strong>{displayPeriod}</strong>
         </div>
         <div className="info-item">
           <span>{t("detail.target")}</span>
-          <strong>{opportunity.target}</strong>
+          <strong>{opportunity.target || fallback}</strong>
         </div>
       </section>
 
@@ -172,15 +216,15 @@ export default function OpportunityDetailPage() {
         <div className="detail-copy">
           <div className="copy-panel">
             <h2>{t("detail.description")}</h2>
-            <p>{opportunity.description}</p>
+            <p>{opportunity.description || fallback}</p>
           </div>
           <div className="copy-panel">
             <h2>{t("detail.requirements")}</h2>
-            <p>{opportunity.requirements}</p>
+            <p>{opportunity.requirements || fallback}</p>
           </div>
           <div className="copy-panel">
             <h2>{t("detail.benefits")}</h2>
-            <p>{opportunity.benefits}</p>
+            <p>{opportunity.benefits || fallback}</p>
           </div>
           <div className="copy-panel">
             <h2>{t("detail.howToApply")}</h2>
@@ -191,7 +235,7 @@ export default function OpportunityDetailPage() {
           <h2>{t("detail.record")}</h2>
           <div className="status-list">
             {statuses.map((item) => (
-              <FilterChip key={item} selected={status === item} onClick={() => setStatus(item)}>
+              <FilterChip key={item} selected={status === item} onClick={() => handleStatusChange(item)} disabled={recordSaving}>
                 {labelStatus(item)}
               </FilterChip>
             ))}

@@ -5,4 +5,6 @@ export const authApi = {
   login: (body) => request("/api/auth/login", { method: "POST", body: JSON.stringify(body) }),
   me: () => request("/api/auth/me"),
   logout: () => request("/api/auth/logout", { method: "POST" }),
+  updateProfile: (body) => request("/api/users/profile", { method: "PATCH", body: JSON.stringify(body) }),
+  updateInterests: (body) => request("/api/users/interests", { method: "PATCH", body: JSON.stringify(body) }),
 };

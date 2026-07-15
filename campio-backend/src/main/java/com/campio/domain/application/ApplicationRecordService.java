@@ -27,21 +27,27 @@ public class ApplicationRecordService {
 
   @Transactional
   public ApplicationRecordResponse create(Long opportunityId, ApplicationRecordRequest request, HttpSession session) {
-    ApplicationRecord record = new ApplicationRecord();
-    record.setUserId(userService.currentUserId(session));
-    record.setOpportunityId(opportunityId);
+    long userId = userService.currentUserId(session);
+    ApplicationRecord record = applicationRecordRepository
+        .findByUserIdAndOpportunityId(userId, opportunityId)
+        .orElseGet(ApplicationRecord::new);
+    if (record.getId() == null) {
+      record.setUserId(userId);
+      record.setOpportunityId(opportunityId);
+      record.setCreatedAt(LocalDateTime.now());
+    }
     record.setStatus(request.getStatus());
     record.setMemo(request.getMemo());
-    record.setCreatedAt(LocalDateTime.now());
     record.setUpdatedAt(LocalDateTime.now());
     return toResponse(applicationRecordRepository.save(record));
   }
 
   @Transactional
-  public ApplicationRecordResponse update(Long id, ApplicationRecordRequest request) {
+  public ApplicationRecordResponse update(Long id, ApplicationRecordRequest request, HttpSession session) {
+    long userId = userService.currentUserId(session);
     ApplicationRecord record =
         applicationRecordRepository
-            .findById(id)
+            .findByIdAndUserId(id, userId)
             .orElseThrow(() -> new NotFoundException("Application record not found"));
     record.setStatus(request.getStatus());
     record.setMemo(request.getMemo());

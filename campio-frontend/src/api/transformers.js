@@ -1,10 +1,12 @@
 import { resolveOpportunityLocation } from "../app/opportunityLocation.js";
+import { classifyOpportunityCategory } from "../app/studentOpportunityPolicy.js";
 
 export function normalizeOpportunity(item) {
   if (!item) return item;
 
   return {
     ...item,
+    category: classifyOpportunityCategory(item),
     isOnline: item.isOnline ?? item.online ?? false,
     location: resolveOpportunityLocation(item),
     saved: Boolean(item.saved),

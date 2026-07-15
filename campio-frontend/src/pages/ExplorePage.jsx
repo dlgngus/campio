@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import OpportunityFilters from "../components/opportunity/OpportunityFilters.jsx";
-import { categories } from "../components/opportunity/OpportunityFilters.jsx";
+import { categories, regions, sortOptions } from "../components/opportunity/OpportunityFilters.jsx";
 import OpportunityGrid from "../components/opportunity/OpportunityGrid.jsx";
 import LoadingSkeleton from "../components/common/LoadingSkeleton.jsx";
 import EmptyState from "../components/common/EmptyState.jsx";
@@ -11,6 +11,7 @@ import { isApiStatus } from "../api/client.js";
 import { opportunityApi } from "../api/opportunityApi.js";
 import { savedApi } from "../api/savedApi.js";
 import { isStudentRelevantOpportunity } from "../app/studentOpportunityPolicy.js";
+import { resolveOpportunityLocation } from "../app/opportunityLocation.js";
 import "./pages.css";
 
 export default function ExplorePage() {
@@ -18,9 +19,14 @@ export default function ExplorePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialCategory = searchParams.get("category");
+  const initialRegion = searchParams.get("region");
+  const initialSort = searchParams.get("sort");
   const [filters, setFilters] = useState({
     query: searchParams.get("q") || "",
     category: categories.includes(initialCategory) ? initialCategory : "All",
+    region: regions.includes(initialRegion) ? initialRegion : "All",
+    sortBy: sortOptions.includes(initialSort) ? initialSort : "deadline",
+    deadlineOnly: searchParams.get("deadline") === "soon",
     onlineOnly: false,
     savedOnly: false,
   });
@@ -31,17 +37,32 @@ export default function ExplorePage() {
 
   const filtered = useMemo(() => {
     const query = filters.query.trim().toLowerCase();
-    return opportunities.filter((item) => {
+    const today = new Date();
+    const filteredItems = opportunities.filter((item) => {
+      const location = resolveOpportunityLocation(item);
       const matchesQuery =
         !query ||
-        [item.title, item.organization, item.category, item.location, ...item.tags]
+        [item.title, item.organization, item.category, location, ...item.tags]
           .join(" ")
           .toLowerCase()
           .includes(query);
       const matchesCategory = filters.category === "All" || item.category === filters.category;
+      const matchesRegion = filters.region === "All" || location === filters.region;
+      const deadline = item.deadline ? new Date(`${item.deadline}T00:00:00`) : null;
+      const daysToDeadline = deadline ? Math.ceil((deadline - today) / (1000 * 60 * 60 * 24)) : null;
+      const matchesDeadline = !filters.deadlineOnly || (daysToDeadline !== null && daysToDeadline >= 0 && daysToDeadline <= 14);
       const matchesOnline = !filters.onlineOnly || item.isOnline;
       const matchesSaved = !filters.savedOnly || item.saved;
-      return matchesQuery && matchesCategory && matchesOnline && matchesSaved;
+      return matchesQuery && matchesCategory && matchesRegion && matchesDeadline && matchesOnline && matchesSaved;
+    });
+    return filteredItems.sort((a, b) => {
+      if (filters.sortBy === "latest") {
+        return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
+      }
+      if (filters.sortBy === "title") {
+        return String(a.title || "").localeCompare(String(b.title || ""), "ko");
+      }
+      return String(a.deadline || "9999-12-31").localeCompare(String(b.deadline || "9999-12-31"));
     });
   }, [filters, opportunities]);
 
@@ -79,7 +100,17 @@ export default function ExplorePage() {
   }, [t]);
 
   function updateFilters(next) {
-    setFilters((current) => ({ ...current, ...next }));
+    setFilters((current) => {
+      const updated = { ...current, ...next };
+      const params = new URLSearchParams();
+      if (updated.query) params.set("q", updated.query);
+      if (updated.category !== "All") params.set("category", updated.category);
+      if (updated.region !== "All") params.set("region", updated.region);
+      if (updated.sortBy !== "deadline") params.set("sort", updated.sortBy);
+      if (updated.deadlineOnly) params.set("deadline", "soon");
+      navigate({ pathname: "/explore", search: params.toString() ? `?${params.toString()}` : "" }, { replace: true });
+      return updated;
+    });
   }
 
   async function toggleSave(id) {

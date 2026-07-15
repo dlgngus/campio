@@ -32,7 +32,7 @@ public class ApplicationRecordController {
   }
 
   @PatchMapping("/applications/{id}")
-  public ApplicationRecordResponse update(@PathVariable Long id, @RequestBody ApplicationRecordRequest request) {
-    return applicationRecordService.update(id, request);
+  public ApplicationRecordResponse update(@PathVariable Long id, @RequestBody ApplicationRecordRequest request, HttpSession session) {
+    return applicationRecordService.update(id, request, session);
   }
 }

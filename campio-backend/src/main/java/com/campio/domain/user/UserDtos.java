@@ -20,6 +20,7 @@ class UserResponse {
   private String school;
   private String major;
   private Integer grade;
+  private String interests;
   private String role;
   private boolean verified;
   private String avatarUrl;

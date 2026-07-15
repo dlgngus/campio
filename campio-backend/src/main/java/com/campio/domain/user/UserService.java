@@ -55,7 +55,10 @@ public class UserService {
 
   @Transactional
   public UserResponse updateInterests(HttpSession session, UpdateInterestsRequest request) {
-    return toResponse(findCurrentUser(session));
+    User user = findCurrentUser(session);
+    user.setInterests(request.getInterests());
+    user.setUpdatedAt(LocalDateTime.now());
+    return toResponse(userRepository.save(user));
   }
 
   @Transactional
@@ -151,6 +154,7 @@ public class UserService {
         .school(user.getSchool())
         .major(user.getMajor())
         .grade(user.getGrade())
+        .interests(user.getInterests())
         .role(user.getRole())
         .verified(user.isVerified())
         .avatarUrl(user.getAvatarUrl())

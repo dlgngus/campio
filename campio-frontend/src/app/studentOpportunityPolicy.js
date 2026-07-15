@@ -44,3 +44,30 @@ export function isStudentRelevantOpportunity(opportunity) {
 
   return STUDENT_RELEVANT_KEYWORDS.some((keyword) => text.includes(keyword));
 }
+
+export function classifyOpportunityCategory(opportunity) {
+  const current = opportunity?.category;
+  if (current && current !== "Government Support" && current !== "기타") {
+    return current;
+  }
+
+  const text = [
+    opportunity?.title,
+    opportunity?.organization,
+    opportunity?.description,
+    opportunity?.target,
+    ...(Array.isArray(opportunity?.tags) ? opportunity.tags : []),
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  if (/장학|학자금|등록금/.test(text)) return "Scholarship";
+  if (/공모전|경진대회|해커톤|챌린지|대회/.test(text)) return "Contest";
+  if (/인턴|일경험|채용|취업|직무|현장실습/.test(text)) return "Internship";
+  if (/서포터즈|봉사|대외활동|캠프/.test(text)) return "External Activity";
+  if (/멘토|멘토링|컨설팅/.test(text)) return "Mentoring";
+  if (/세미나|교육|아카데미|강의|부트캠프|수강생|교육생/.test(text)) return "Seminar";
+  if (/창업|스타트업|예비창업/.test(text)) return "Startup";
+  if (/연구|R&D|기술개발|논문/.test(text)) return "Research";
+  return current || "External Activity";
+}

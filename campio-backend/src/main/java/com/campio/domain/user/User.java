@@ -34,6 +34,8 @@ public class User {
   private String school;
   private String major;
   private Integer grade;
+  @Lob
+  private String interests;
   private String role;
   private boolean verified;
 

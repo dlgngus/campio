@@ -91,10 +91,10 @@ export default function Navbar() {
         {user?.role === "ADMIN" ? (
           <>
             <NavLink to="/admin/opportunities" className={({ isActive }) => `navbar__link${isActive ? " active" : ""}`}>
-              <span>Admin</span>
+              <span>{t("nav.admin")}</span>
             </NavLink>
             <NavLink to="/admin/ingestion" className={({ isActive }) => `navbar__link${isActive ? " active" : ""}`}>
-              <span>Crawl</span>
+              <span>{t("nav.crawl")}</span>
             </NavLink>
           </>
         ) : null}

@@ -50,7 +50,7 @@ public class CommunityService {
 
   @Transactional
   public CommunityPostResponse update(Long id, CommunityPostRequest request, HttpSession session) {
-    CommunityPost post = findPost(id);
+    CommunityPost post = findOwnPost(id, session);
     post.setOpportunityId(request.getOpportunityId());
     post.setType(request.getType());
     post.setTitle(request.getTitle());
@@ -61,7 +61,7 @@ public class CommunityService {
 
   @Transactional
   public void delete(Long id, HttpSession session) {
-    CommunityPost post = findPost(id);
+    CommunityPost post = findOwnPost(id, session);
     commentRepository.deleteByPostId(id);
     communityPostRepository.delete(post);
   }
@@ -100,6 +100,11 @@ public class CommunityService {
 
   private CommunityPost findPost(Long id) {
     return communityPostRepository.findById(id).orElseThrow(() -> new NotFoundException("Post not found"));
+  }
+
+  private CommunityPost findOwnPost(Long id, HttpSession session) {
+    long userId = userService.currentUserId(session);
+    return communityPostRepository.findByIdAndUserId(id, userId).orElseThrow(() -> new NotFoundException("Post not found"));
   }
 
   private CommunityPostResponse toResponse(CommunityPost post) {

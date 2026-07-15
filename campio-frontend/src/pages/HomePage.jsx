@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search } from "lucide-react";
+import { GraduationCap, Search, Users } from "lucide-react";
 import Card from "../components/common/Card.jsx";
 import { useSettings } from "../app/settings.jsx";
 import "./pages.css";
@@ -9,7 +9,7 @@ export default function HomePage() {
   const { language, labelCategory, t } = useSettings();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const categories = ["Internship", "Competition", "Scholarship", "Exchange", "Research"];
+  const categories = ["Internship", "Contest", "Scholarship", "Exchange", "Research"];
 
   function handleSearchSubmit(event) {
     event.preventDefault();
@@ -95,19 +95,19 @@ export default function HomePage() {
         <div className="home-section-shell">
           <div className="home-feature-cards__grid">
             <Card className="home-feature-card">
-              <div className="home-feature-card__icon">🔍</div>
+              <div className="home-feature-card__icon"><Search size={22} aria-hidden="true" /></div>
               <h2>{language === "ko" ? "기회 탐색" : "Opportunity Search"}</h2>
-              <p>인턴십, 공모전, 장학금 정보를 한곳에서 간결하게 확인하세요.</p>
+              <p>{language === "ko" ? "인턴십, 공모전, 장학금 정보를 한곳에서 간결하게 확인하세요." : "Browse internships, contests, scholarships, and career programs in one focused place."}</p>
             </Card>
             <Card className="home-feature-card">
-              <div className="home-feature-card__icon">👥</div>
+              <div className="home-feature-card__icon"><Users size={22} aria-hidden="true" /></div>
               <h2>{language === "ko" ? "커뮤니티" : "Community"}</h2>
-              <p>다양한 사람들과 정보와 커리어를 공유하고 소통해 보세요.</p>
+              <p>{language === "ko" ? "다양한 사람들과 정보와 커리어를 공유하고 소통해 보세요." : "Ask questions, compare experiences, and make better application decisions."}</p>
             </Card>
             <Card className="home-feature-card">
-              <div className="home-feature-card__icon">👨‍🏫</div>
+              <div className="home-feature-card__icon"><GraduationCap size={22} aria-hidden="true" /></div>
               <h2>{language === "ko" ? "멘토링" : "Mentoring"}</h2>
-              <p>현업 전문가와 멘토들에게 직접 피드백을 받고 성장하세요.</p>
+              <p>{language === "ko" ? "현업 전문가와 멘토들에게 직접 피드백을 받고 성장하세요." : "Connect opportunities with guidance from people who understand the process."}</p>
             </Card>
           </div>
         </div>

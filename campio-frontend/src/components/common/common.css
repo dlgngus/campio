@@ -118,6 +118,13 @@
   padding: 0 var(--space-4);
 }
 
+.field__textarea {
+  min-height: 116px;
+  padding-top: 13px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
 .field__input::placeholder {
   color: var(--color-ink-soft);
 }

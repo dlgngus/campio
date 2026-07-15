@@ -1,9 +1,11 @@
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { Bookmark, Compass, Home, MessageCircle } from "lucide-react";
+import { Bookmark, Compass, Home, LogIn, MessageCircle, User } from "lucide-react";
+import { AUTH_CHANGE_EVENT, isAuthenticated } from "../../app/authSession.js";
 import { useSettings } from "../../app/settings.jsx";
 import "./layout.css";
 
-const tabs = [
+const baseTabs = [
   { to: "/home", labelKey: "nav.home", icon: Home },
   { to: "/explore", labelKey: "nav.explore", icon: Compass },
   { to: "/saved", labelKey: "nav.saved", icon: Bookmark },
@@ -12,6 +14,24 @@ const tabs = [
 
 export default function MobileTabBar() {
   const { t } = useSettings();
+  const [authenticated, setAuthenticatedState] = useState(() => isAuthenticated());
+
+  useEffect(() => {
+    const handleAuthChange = () => setAuthenticatedState(isAuthenticated());
+    window.addEventListener(AUTH_CHANGE_EVENT, handleAuthChange);
+    window.addEventListener("storage", handleAuthChange);
+    return () => {
+      window.removeEventListener(AUTH_CHANGE_EVENT, handleAuthChange);
+      window.removeEventListener("storage", handleAuthChange);
+    };
+  }, []);
+
+  const tabs = [
+    ...baseTabs,
+    authenticated
+      ? { to: "/profile", labelKey: "nav.profile", icon: User }
+      : { to: "/login", labelKey: "login.action", icon: LogIn },
+  ];
 
   return (
     <nav className="mobile-tabs" aria-label="Mobile navigation">

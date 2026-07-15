@@ -84,8 +84,8 @@ export default function ProfilePage() {
         <div className="profile-heading">
           <Avatar src={user.avatarUrl} name={user.name} size="lg" />
           <div>
-          <p className="page-kicker">{t("profile.kicker")}</p>
-          <h1 className="page-title">{user.name}.</h1>
+            <p className="page-kicker">{t("profile.kicker")}</p>
+            <h1 className="page-title">{user.name}.</h1>
           </div>
         </div>
       </header>
@@ -96,7 +96,7 @@ export default function ProfilePage() {
         </div>
         <div className="copy-panel">
           <h2>{t("profile.major")}</h2>
-          <p>{user.major || "-"} · Grade {user.grade || "-"}</p>
+          <p>{user.major || "-"} · {t("onboarding.grade")} {user.grade || "-"}</p>
         </div>
         <div className="copy-panel">
           <h2>{t("profile.saved")}</h2>
@@ -106,7 +106,7 @@ export default function ProfilePage() {
       <section className="page-section">
         <SectionHeader title={t("profile.interests")} />
         <div className="status-list">
-          {["Internship", "Development", "Scholarship", "AI", "Research"].map((item) => (
+          {(user.interests ? user.interests.split(",").filter(Boolean) : ["Internship", "Scholarship", "Research"]).map((item) => (
             <Badge key={item}>{labelCategory(item)}</Badge>
           ))}
         </div>

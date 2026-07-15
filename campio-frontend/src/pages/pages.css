@@ -452,6 +452,17 @@
   flex-wrap: wrap;
 }
 
+.community-composer {
+  display: grid;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+  padding: var(--space-5);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface-1);
+  box-shadow: var(--shadow-card);
+}
+
 .auth-page,
 .onboarding-page {
   width: min(var(--container-max), calc(100% - 32px));

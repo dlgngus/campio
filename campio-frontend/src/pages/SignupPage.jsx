@@ -62,7 +62,7 @@ export default function SignupPage() {
           <Input
             label={t("signup.name")}
             name="name"
-            placeholder="Ryan"
+            placeholder="Alex Kim"
             value={form.name}
             onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
             required
