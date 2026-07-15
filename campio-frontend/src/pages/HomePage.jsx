@@ -20,7 +20,10 @@ export default function HomePage() {
   const heroTitle =
     language === "ko" ? (
       <>
-        나에게 딱 맞는 <span className="home-hero-accent">커리어</span>를 찾아보세요.
+        <span className="home-hero-line">
+          나에게 딱 맞는 <span className="home-hero-accent">커리어</span>를
+        </span>
+        <span className="home-hero-line">찾아보세요.</span>
       </>
     ) : (
       <>

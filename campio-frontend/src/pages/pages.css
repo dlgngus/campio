@@ -86,6 +86,10 @@
   color: #2563eb;
 }
 
+.home-hero-line {
+  display: block;
+}
+
 .home-site-hero__copy > p:not(.page-kicker) {
   max-width: 680px;
   margin: 0;
