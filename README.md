@@ -1,4 +1,4 @@
-# Campio
+# Campio - ⚙️ still working on it
 
 Campio is a web platform for university students to discover every opportunity in one place.
 
