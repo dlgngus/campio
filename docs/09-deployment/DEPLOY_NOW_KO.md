@@ -139,13 +139,13 @@ Vercel 배포가 끝나면 실제 프론트 URL이 생깁니다.
 예시:
 
 ```text
-https://campio-app.vercel.app
+https://campiokr.vercel.app
 ```
 
 Render Backend Web Service의 환경변수에서 아래 값을 실제 Vercel URL로 바꿉니다.
 
 ```text
-FRONTEND_ORIGIN=https://campio-app.vercel.app
+FRONTEND_ORIGIN=https://campiokr.vercel.app
 ```
 
 저장 후 다시:

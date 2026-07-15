@@ -117,7 +117,7 @@ For Render:
 - Dockerfile path: `campio-backend/Dockerfile`
 - Health check path: `/api/health`
 - Add a managed PostgreSQL database and put its Internal Database URL in `DATABASE_URL`.
-- Set `FRONTEND_ORIGIN` to the exact Vercel origin, for example `https://campio-app.vercel.app`.
+- Set `FRONTEND_ORIGIN` to the exact Vercel origin, for example `https://campiokr.vercel.app`.
 
 Production admin bootstrap:
 
