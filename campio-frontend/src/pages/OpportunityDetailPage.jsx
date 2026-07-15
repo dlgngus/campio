@@ -18,6 +18,7 @@ import { savedApi } from "../api/savedApi.js";
 import { isApiStatus } from "../api/client.js";
 import { setAuthenticated } from "../app/authSession.js";
 import { useSettings } from "../app/settings.jsx";
+import { isStudentRelevantOpportunity } from "../app/studentOpportunityPolicy.js";
 import "./pages.css";
 
 const statuses = ["Interested", "Preparing", "Applied", "Accepted", "Rejected"];
@@ -50,7 +51,10 @@ export default function OpportunityDetailPage() {
       setOpportunity(detail);
       setSaved(detail.saved);
       setRelated(
-        allOpportunities.filter((item) => item.id !== detail.id && item.category === detail.category).slice(0, 3)
+        allOpportunities
+          .filter(isStudentRelevantOpportunity)
+          .filter((item) => item.id !== detail.id && item.category === detail.category)
+          .slice(0, 3)
       );
       setRelatedPosts(posts.filter((post) => post.opportunityId === detail.id).slice(0, 2));
       setMentors(mentorList.slice(0, 3));

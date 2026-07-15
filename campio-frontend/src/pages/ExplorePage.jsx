@@ -10,6 +10,7 @@ import { setAuthenticated } from "../app/authSession.js";
 import { isApiStatus } from "../api/client.js";
 import { opportunityApi } from "../api/opportunityApi.js";
 import { savedApi } from "../api/savedApi.js";
+import { isStudentRelevantOpportunity } from "../app/studentOpportunityPolicy.js";
 import "./pages.css";
 
 export default function ExplorePage() {
@@ -49,7 +50,7 @@ export default function ExplorePage() {
     setError("");
     try {
       const items = await opportunityApi.list();
-      setOpportunities(items);
+      setOpportunities(items.filter(isStudentRelevantOpportunity));
     } catch (err) {
       setError(err.message || t("common.errorDescription"));
     } finally {
@@ -64,7 +65,7 @@ export default function ExplorePage() {
       setError("");
       try {
         const items = await opportunityApi.list();
-        if (mounted) setOpportunities(items);
+        if (mounted) setOpportunities(items.filter(isStudentRelevantOpportunity));
       } catch (err) {
         if (mounted) setError(err.message || t("common.errorDescription"));
       } finally {
