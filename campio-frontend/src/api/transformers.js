@@ -1,9 +1,12 @@
+import { resolveOpportunityLocation } from "../app/opportunityLocation.js";
+
 export function normalizeOpportunity(item) {
   if (!item) return item;
 
   return {
     ...item,
     isOnline: item.isOnline ?? item.online ?? false,
+    location: resolveOpportunityLocation(item),
     saved: Boolean(item.saved),
     tags: Array.isArray(item.tags) ? item.tags : [],
   };

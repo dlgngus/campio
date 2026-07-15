@@ -55,6 +55,42 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
       Pattern.DOTALL);
   private static final Pattern BIZINFO_LAST_PAGE_PATTERN = Pattern.compile("cpage=(\\d+)[^\"]*\"[^>]*title=\"마지막페이지\"");
   private static final Pattern BIZINFO_DATE_RANGE_PATTERN = Pattern.compile("(\\d{4}-\\d{2}-\\d{2})\\s*~\\s*(\\d{4}-\\d{2}-\\d{2})");
+  private static final List<RegionAlias> REGION_ALIASES = List.of(
+      new RegionAlias("서울특별시", "서울특별시"),
+      new RegionAlias("부산광역시", "부산광역시"),
+      new RegionAlias("대구광역시", "대구광역시"),
+      new RegionAlias("인천광역시", "인천광역시"),
+      new RegionAlias("광주광역시", "광주광역시"),
+      new RegionAlias("대전광역시", "대전광역시"),
+      new RegionAlias("울산광역시", "울산광역시"),
+      new RegionAlias("세종특별자치시", "세종특별자치시"),
+      new RegionAlias("경기도", "경기도"),
+      new RegionAlias("강원특별자치도", "강원특별자치도"),
+      new RegionAlias("충청북도", "충청북도"),
+      new RegionAlias("충청남도", "충청남도"),
+      new RegionAlias("전북특별자치도", "전북특별자치도"),
+      new RegionAlias("전라북도", "전북특별자치도"),
+      new RegionAlias("전라남도", "전라남도"),
+      new RegionAlias("경상북도", "경상북도"),
+      new RegionAlias("경상남도", "경상남도"),
+      new RegionAlias("제주특별자치도", "제주특별자치도"),
+      new RegionAlias("서울", "서울특별시"),
+      new RegionAlias("부산", "부산광역시"),
+      new RegionAlias("대구", "대구광역시"),
+      new RegionAlias("인천", "인천광역시"),
+      new RegionAlias("광주", "광주광역시"),
+      new RegionAlias("대전", "대전광역시"),
+      new RegionAlias("울산", "울산광역시"),
+      new RegionAlias("세종", "세종특별자치시"),
+      new RegionAlias("경기", "경기도"),
+      new RegionAlias("강원", "강원특별자치도"),
+      new RegionAlias("충북", "충청북도"),
+      new RegionAlias("충남", "충청남도"),
+      new RegionAlias("전북", "전북특별자치도"),
+      new RegionAlias("전남", "전라남도"),
+      new RegionAlias("경북", "경상북도"),
+      new RegionAlias("경남", "경상남도"),
+      new RegionAlias("제주", "제주특별자치도"));
 
   private final RestTemplate ingestionRestTemplate;
 
@@ -183,6 +219,7 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
       }
       String sourceUrl = absolutizeBizInfoUrl(detailPath);
       String content = category + " / " + owner + " / " + organization + " / 신청기간 " + period;
+      String location = resolveLocation(owner, title, organization);
       FetchedRawOpportunity item = FetchedRawOpportunity.builder()
           .externalId(externalId)
           .sourceUrl(sourceUrl)
@@ -194,10 +231,10 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
           .description("기업마당 공개 지원사업 공고입니다. 자세한 내용과 신청은 원본 출처에서 확인하세요.")
           .deadline(deadline)
           .startDate(startDate == null ? registeredAt : startDate)
-          .location("Nationwide")
+          .location(location)
           .online(false)
           .applyUrl(sourceUrl)
-          .tags(List.of("기업마당", category, owner))
+          .tags(buildTags("기업마당", category, owner, location))
           .build();
       if (externalIds.add(item.getExternalId())) {
         results.add(item);
@@ -216,6 +253,7 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
       LocalDate deadline) {
     String externalId = idPart.matches("\\d+") ? "kstartup-" + idPart : idPart;
     String sourceUrl = source.getBaseUrl() + (idPart.matches("\\d+") ? "?schM=view&pbancSn=" + idPart : "#" + externalId.substring(0, Math.min(12, externalId.length())));
+    String location = resolveLocation(title, organization);
     return FetchedRawOpportunity.builder()
         .externalId(externalId)
         .sourceUrl(sourceUrl)
@@ -227,11 +265,50 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
         .description("K-Startup 공개 모집중 사업공고입니다. 자세한 내용과 신청은 원본 출처에서 확인하세요.")
         .deadline(deadline)
         .startDate(startDate)
-        .location("Nationwide")
+        .location(location)
         .online(false)
         .applyUrl(sourceUrl)
-        .tags(List.of("K-Startup", category))
+        .tags(buildTags("K-Startup", category, location))
         .build();
+  }
+
+  private List<String> buildTags(String sourceName, String category, String ownerOrLocation) {
+    return buildTags(sourceName, category, ownerOrLocation, ownerOrLocation);
+  }
+
+  private List<String> buildTags(String sourceName, String category, String owner, String location) {
+    List<String> tags = new ArrayList<>();
+    addTag(tags, sourceName);
+    addTag(tags, category);
+    if (!location.equals(owner)) {
+      addTag(tags, owner);
+    }
+    return tags;
+  }
+
+  private void addTag(List<String> tags, String value) {
+    String cleaned = clean(value);
+    if (!cleaned.isBlank() && !tags.contains(cleaned)) {
+      tags.add(cleaned);
+    }
+  }
+
+  private String resolveLocation(String... values) {
+    for (String value : values) {
+      String normalized = clean(value).replaceAll("\\s+", "");
+      if (normalized.isBlank()) {
+        continue;
+      }
+      for (RegionAlias alias : REGION_ALIASES) {
+        if (normalized.contains(alias.needle())) {
+          return alias.label();
+        }
+      }
+    }
+    return "Nationwide";
+  }
+
+  private record RegionAlias(String needle, String label) {
   }
 
   private String stripTags(String html) {

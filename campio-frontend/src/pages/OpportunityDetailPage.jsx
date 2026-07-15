@@ -19,6 +19,7 @@ import { isApiStatus } from "../api/client.js";
 import { setAuthenticated } from "../app/authSession.js";
 import { useSettings } from "../app/settings.jsx";
 import { isStudentRelevantOpportunity } from "../app/studentOpportunityPolicy.js";
+import { resolveOpportunityLocation } from "../app/opportunityLocation.js";
 import "./pages.css";
 
 const statuses = ["Interested", "Preparing", "Applied", "Accepted", "Rejected"];
@@ -91,6 +92,8 @@ export default function OpportunityDetailPage() {
     );
   }
 
+  const displayLocation = resolveOpportunityLocation(opportunity);
+
   return (
     <div className="page stack">
       <section className="detail-hero">
@@ -100,7 +103,7 @@ export default function OpportunityDetailPage() {
           <p>{opportunity.organization}</p>
           <div className="featured-opportunity__meta">
             <DeadlineBadge deadline={opportunity.deadline} />
-            <span>{labelLocation(opportunity.location)}</span>
+            <span>{labelLocation(displayLocation)}</span>
             <span>{opportunity.isOnline ? t("filters.online") : "Offline"}</span>
           </div>
         </div>
@@ -151,7 +154,7 @@ export default function OpportunityDetailPage() {
         </div>
         <div className="info-item">
           <span>{t("detail.location")}</span>
-          <strong>{labelLocation(opportunity.location)}</strong>
+          <strong>{labelLocation(displayLocation)}</strong>
         </div>
         <div className="info-item">
           <span>{t("detail.period")}</span>

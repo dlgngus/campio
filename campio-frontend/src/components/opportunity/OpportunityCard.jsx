@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Badge from "../common/Badge.jsx";
 import Button from "../common/Button.jsx";
 import { useSettings } from "../../app/settings.jsx";
+import { resolveOpportunityLocation, visibleOpportunityTags } from "../../app/opportunityLocation.js";
 import DeadlineBadge from "./DeadlineBadge.jsx";
 import "./opportunity.css";
 
@@ -16,6 +17,8 @@ export default function OpportunityCard({
   const { language, labelCategory, labelLocation, t } = useSettings();
   const isUrgent = variant === "urgent";
   const isHomeLayout = layout === "home";
+  const displayLocation = resolveOpportunityLocation(opportunity);
+  const displayTags = visibleOpportunityTags(opportunity);
 
   return (
     <article
@@ -68,7 +71,7 @@ export default function OpportunityCard({
           <div className="opportunity-card__meta">
             <span>
               <MapPin size={15} aria-hidden="true" />
-              {opportunity.isOnline ? t("filters.online") : labelLocation(opportunity.location)}
+              {opportunity.isOnline ? t("filters.online") : labelLocation(displayLocation)}
             </span>
             <span>
               <Users size={15} aria-hidden="true" />
@@ -78,7 +81,7 @@ export default function OpportunityCard({
             </span>
           </div>
           <div className="opportunity-card__tags">
-            {opportunity.tags.slice(0, 3).map((tag) => (
+            {displayTags.map((tag) => (
               <span key={tag}>{tag}</span>
             ))}
           </div>

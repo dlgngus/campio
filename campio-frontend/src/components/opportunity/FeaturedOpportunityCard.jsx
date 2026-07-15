@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Badge from "../common/Badge.jsx";
 import Button from "../common/Button.jsx";
 import { useSettings } from "../../app/settings.jsx";
+import { resolveOpportunityLocation, visibleOpportunityTags } from "../../app/opportunityLocation.js";
 import DeadlineBadge from "./DeadlineBadge.jsx";
 import "./opportunity.css";
 
@@ -15,6 +16,8 @@ export default function FeaturedOpportunityCard({
   compact = false,
 }) {
   const { labelCategory, labelLocation, t } = useSettings();
+  const displayLocation = resolveOpportunityLocation(opportunity);
+  const displayTags = visibleOpportunityTags(opportunity);
 
   return (
     <article
@@ -43,7 +46,7 @@ export default function FeaturedOpportunityCard({
             <p className="featured-opportunity__copy">{opportunity.description}</p>
             <div className="featured-opportunity__chips">
               <Badge>{labelCategory(opportunity.category)}</Badge>
-              {opportunity.tags.slice(0, 3).map((tag) => (
+              {displayTags.map((tag) => (
                 <Badge key={tag}>{tag}</Badge>
               ))}
             </div>
@@ -56,7 +59,7 @@ export default function FeaturedOpportunityCard({
               </div>
               <div>
                 <span>{t("detail.location")}</span>
-                <strong>{labelLocation(opportunity.location)}</strong>
+                <strong>{labelLocation(displayLocation)}</strong>
               </div>
             </div>
             <div className="featured-opportunity__actions">
