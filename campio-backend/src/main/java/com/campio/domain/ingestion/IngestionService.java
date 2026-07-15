@@ -39,10 +39,13 @@ public class IngestionService {
   @Transactional
   public OpportunitySourceResponse createSource(OpportunitySourceRequest request, HttpSession session) {
     userService.requireAdmin(session);
-    OpportunitySource source = new OpportunitySource();
+    OpportunitySource source = sourceRepository.findByName(request.getName()).orElseGet(OpportunitySource::new);
+    boolean existingSource = source.getId() != null;
     applySourceRequest(source, request);
-    source.setFailureCount(0);
-    source.setCreatedAt(LocalDateTime.now());
+    if (!existingSource) {
+      source.setFailureCount(0);
+      source.setCreatedAt(LocalDateTime.now());
+    }
     source.setUpdatedAt(LocalDateTime.now());
     return toSourceResponse(sourceRepository.save(source));
   }

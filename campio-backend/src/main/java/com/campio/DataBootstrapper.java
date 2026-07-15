@@ -79,7 +79,7 @@ public class DataBootstrapper {
       String name,
       String baseUrl,
       String categoryHint) {
-    if (sourceRepository.existsByName(name)) {
+    if (sourceRepository.findByName(name).isPresent()) {
       return;
     }
     OpportunitySource source = new OpportunitySource();
