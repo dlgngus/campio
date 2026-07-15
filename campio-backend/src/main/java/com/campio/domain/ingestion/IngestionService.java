@@ -2,6 +2,7 @@ package com.campio.domain.ingestion;
 
 import com.campio.domain.opportunity.Opportunity;
 import com.campio.domain.opportunity.OpportunityRepository;
+import com.campio.domain.opportunity.StudentOpportunityPolicy;
 import com.campio.domain.user.UserService;
 import com.campio.global.exception.BadRequestException;
 import com.campio.global.exception.NotFoundException;
@@ -318,6 +319,16 @@ public class IngestionService {
     if (raw.getNormalizedOpportunityId() != null || item.getDeadline() == null || item.getRawTitle() == null || item.getRawTitle().isBlank()) {
       return;
     }
+    String category = firstNonBlank(item.getCategory(), source.getCategoryHint());
+    if (!StudentOpportunityPolicy.isStudentRelevant(
+        item.getRawTitle(),
+        item.getOrganization(),
+        category,
+        firstNonBlank(item.getDescription(), item.getRawContent()),
+        null,
+        item.getTags())) {
+      return;
+    }
     String applyUrl = firstNonBlank(item.getApplyUrl(), item.getSourceUrl());
     if (applyUrl == null || applyUrl.isBlank() || opportunityRepository.findByApplyUrl(applyUrl).isPresent()) {
       return;
@@ -330,7 +341,7 @@ public class IngestionService {
     Opportunity opportunity = new Opportunity();
     opportunity.setTitle(item.getRawTitle());
     opportunity.setOrganization(organization);
-    opportunity.setCategory(firstNonBlank(item.getCategory(), source.getCategoryHint()));
+    opportunity.setCategory(category);
     opportunity.setDescription(firstNonBlank(item.getDescription(), item.getRawContent()));
     opportunity.setRequirements(null);
     opportunity.setBenefits(null);

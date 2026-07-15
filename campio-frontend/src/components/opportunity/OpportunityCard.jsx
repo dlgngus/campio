@@ -13,7 +13,7 @@ export default function OpportunityCard({
   density = "default",
   layout = "default",
 }) {
-  const { language, labelCategory, t } = useSettings();
+  const { language, labelCategory, labelLocation, t } = useSettings();
   const isUrgent = variant === "urgent";
   const isHomeLayout = layout === "home";
 
@@ -68,7 +68,7 @@ export default function OpportunityCard({
           <div className="opportunity-card__meta">
             <span>
               <MapPin size={15} aria-hidden="true" />
-              {opportunity.isOnline ? t("filters.online") : opportunity.location}
+              {opportunity.isOnline ? t("filters.online") : labelLocation(opportunity.location)}
             </span>
             <span>
               <Users size={15} aria-hidden="true" />

@@ -23,7 +23,7 @@ public class OpportunityService {
 
   @Transactional(readOnly = true)
   public List<OpportunityResponse> listAll() {
-    return mapWithSaved(opportunityRepository.findAll());
+    return mapWithSaved(filterStudentRelevant(opportunityRepository.findAll()));
   }
 
   @Transactional(readOnly = true)
@@ -32,20 +32,20 @@ public class OpportunityService {
     if (list.isEmpty()) {
       list = opportunityRepository.findAll().stream().limit(4).collect(Collectors.toList());
     }
-    return mapWithSaved(list);
+    return mapWithSaved(filterStudentRelevant(list));
   }
 
   @Transactional(readOnly = true)
   public List<OpportunityResponse> closingSoon() {
     LocalDate today = LocalDate.now();
-    return mapWithSaved(
+    return mapWithSaved(filterStudentRelevant(
         opportunityRepository.findByDeadlineBeforeOrDeadlineEqualsOrderByDeadlineAsc(
-            today.plusDays(30), today));
+            today.plusDays(30), today)));
   }
 
   @Transactional(readOnly = true)
   public List<OpportunityResponse> popular() {
-    return mapWithSaved(opportunityRepository.findAllByOrderByPopularityCountDesc());
+    return mapWithSaved(filterStudentRelevant(opportunityRepository.findAllByOrderByPopularityCountDesc()));
   }
 
   @Transactional(readOnly = true)
@@ -130,6 +130,18 @@ public class OpportunityService {
                 .collect(Collectors.toSet());
     return opportunities.stream()
         .map(opportunity -> toResponse(opportunity, savedIds.contains(opportunity.getId())))
+        .collect(Collectors.toList());
+  }
+
+  private List<Opportunity> filterStudentRelevant(List<Opportunity> opportunities) {
+    return opportunities.stream()
+        .filter(opportunity -> StudentOpportunityPolicy.isStudentRelevant(
+            opportunity.getTitle(),
+            opportunity.getOrganization(),
+            opportunity.getCategory(),
+            opportunity.getDescription(),
+            opportunity.getTarget(),
+            opportunity.getTags()))
         .collect(Collectors.toList());
   }
 

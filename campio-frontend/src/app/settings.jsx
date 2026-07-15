@@ -31,7 +31,7 @@ const copy = {
     "explore.matches": "matches",
     "explore.title": "Explore opportunities.",
     "filters.search": "Search",
-    "filters.placeholder": "Title, organization, category, tag",
+    "filters.placeholder": "Title, organization, category, location, tag",
     "filters.category": "Category",
     "filters.quick": "Quick filters",
     "filters.online": "Online",
@@ -45,6 +45,7 @@ const copy = {
     "detail.apply": "Apply Now",
     "detail.deadline": "Deadline",
     "detail.location": "Location",
+    "location.Nationwide": "Nationwide",
     "detail.period": "Period",
     "detail.target": "Target",
     "detail.description": "Description",
@@ -146,7 +147,7 @@ const copy = {
     "explore.matches": "개 결과",
     "explore.title": "기회를 탐색하세요.",
     "filters.search": "검색",
-    "filters.placeholder": "제목, 기관, 카테고리, 태그",
+    "filters.placeholder": "제목, 기관, 카테고리, 지역, 태그",
     "filters.category": "카테고리",
     "filters.quick": "빠른 필터",
     "filters.online": "온라인",
@@ -160,6 +161,7 @@ const copy = {
     "detail.apply": "지원하기",
     "detail.deadline": "마감일",
     "detail.location": "위치",
+    "location.Nationwide": "전국",
     "detail.period": "기간",
     "detail.target": "대상",
     "detail.description": "소개",
@@ -270,6 +272,15 @@ const statusLabels = {
   en: {},
 };
 
+const locationLabels = {
+  ko: {
+    Nationwide: "전국",
+  },
+  en: {
+    Nationwide: "Nationwide",
+  },
+};
+
 const SettingsContext = createContext(null);
 
 function readStoredValue(key, fallback) {
@@ -300,6 +311,8 @@ export function SettingsProvider({ children }) {
       t: (key) => copy[language][key] || copy.en[key] || key,
       labelCategory: (valueToLabel) =>
         categoryLabels[language][valueToLabel] || valueToLabel,
+      labelLocation: (valueToLabel) =>
+        locationLabels[language][valueToLabel] || valueToLabel || "-",
       labelStatus: (valueToLabel) => statusLabels[language][valueToLabel] || valueToLabel,
     }),
     [language, theme]

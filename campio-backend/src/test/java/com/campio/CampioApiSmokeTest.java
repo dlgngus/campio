@@ -571,7 +571,8 @@ class CampioApiSmokeTest {
 
     mockMvc.perform(get("/api/opportunities"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$[?(@.title == '2026 아트코리아랩 입주기업 모집 공모')]").isArray());
+        .andExpect(jsonPath("$[?(@.title == '국민대학교 청년도약 인재양성 부트캠프 참가자 모집')]").isArray())
+        .andExpect(jsonPath("$[?(@.title == '2026 아트코리아랩 입주기업 모집 공모')]").doesNotExist());
 
     server.verify();
   }

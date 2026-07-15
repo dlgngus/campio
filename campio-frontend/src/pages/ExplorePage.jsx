@@ -33,7 +33,7 @@ export default function ExplorePage() {
     return opportunities.filter((item) => {
       const matchesQuery =
         !query ||
-        [item.title, item.organization, item.category, ...item.tags]
+        [item.title, item.organization, item.category, item.location, ...item.tags]
           .join(" ")
           .toLowerCase()
           .includes(query);

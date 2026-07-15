@@ -1,6 +1,7 @@
 package com.campio.domain.ingestion;
 
 import com.campio.global.exception.BadRequestException;
+import com.campio.domain.opportunity.StudentOpportunityPolicy;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -181,14 +182,15 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
         continue;
       }
       String sourceUrl = absolutizeBizInfoUrl(detailPath);
+      String content = category + " / " + owner + " / " + organization + " / 신청기간 " + period;
       FetchedRawOpportunity item = FetchedRawOpportunity.builder()
           .externalId(externalId)
           .sourceUrl(sourceUrl)
           .rawTitle(title)
-          .rawContent(category + " / " + owner + " / " + organization + " / 신청기간 " + period)
+          .rawContent(content)
           .rawPayload("{\"source\":\"Bizinfo\",\"category\":\"" + escape(category) + "\",\"period\":\"" + escape(period) + "\"}")
           .organization(organization)
-          .category(firstNonBlank(source.getCategoryHint(), "Government Support"))
+          .category(StudentOpportunityPolicy.classifyCategory(title, category, content))
           .description("기업마당 공개 지원사업 공고입니다. 자세한 내용과 신청은 원본 출처에서 확인하세요.")
           .deadline(deadline)
           .startDate(startDate == null ? registeredAt : startDate)

@@ -23,7 +23,7 @@ import "./pages.css";
 const statuses = ["Interested", "Preparing", "Applied", "Accepted", "Rejected"];
 
 export default function OpportunityDetailPage() {
-  const { labelCategory, labelStatus, t } = useSettings();
+  const { labelCategory, labelLocation, labelStatus, t } = useSettings();
   const { id } = useParams();
   const navigate = useNavigate();
   const [opportunity, setOpportunity] = useState(null);
@@ -96,7 +96,7 @@ export default function OpportunityDetailPage() {
           <p>{opportunity.organization}</p>
           <div className="featured-opportunity__meta">
             <DeadlineBadge deadline={opportunity.deadline} />
-            <span>{opportunity.location}</span>
+            <span>{labelLocation(opportunity.location)}</span>
             <span>{opportunity.isOnline ? t("filters.online") : "Offline"}</span>
           </div>
         </div>
@@ -147,7 +147,7 @@ export default function OpportunityDetailPage() {
         </div>
         <div className="info-item">
           <span>{t("detail.location")}</span>
-          <strong>{opportunity.location}</strong>
+          <strong>{labelLocation(opportunity.location)}</strong>
         </div>
         <div className="info-item">
           <span>{t("detail.period")}</span>

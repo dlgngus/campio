@@ -1,0 +1,93 @@
+package com.campio.domain.opportunity;
+
+import java.util.List;
+
+public final class StudentOpportunityPolicy {
+
+  private static final List<String> STUDENT_RELEVANT_KEYWORDS = List.of(
+      "대학생",
+      "대학원생",
+      "재학생",
+      "휴학생",
+      "졸업예정",
+      "청년",
+      "만 19",
+      "만19",
+      "만 18",
+      "만18",
+      "예비창업",
+      "창업동아리",
+      "창업교육",
+      "취업",
+      "인턴",
+      "채용",
+      "일자리",
+      "교육생",
+      "수강생",
+      "멘토링",
+      "공모전",
+      "경진대회",
+      "해커톤",
+      "서포터즈",
+      "대외활동",
+      "장학",
+      "교환학생",
+      "캠프",
+      "부트캠프");
+
+  private StudentOpportunityPolicy() {}
+
+  public static boolean isStudentRelevant(
+      String title,
+      String organization,
+      String category,
+      String description,
+      String target,
+      List<String> tags) {
+    String haystack = String.join(
+        " ",
+        safe(title),
+        safe(organization),
+        safe(category),
+        safe(description),
+        safe(target),
+        tags == null ? "" : String.join(" ", tags));
+    return STUDENT_RELEVANT_KEYWORDS.stream().anyMatch(haystack::contains);
+  }
+
+  public static String classifyCategory(String title, String category, String content) {
+    String text = String.join(" ", safe(title), safe(category), safe(content));
+    if (containsAny(text, "장학", "학자금")) {
+      return "Scholarship";
+    }
+    if (containsAny(text, "공모전", "경진대회", "해커톤", "대회", "아이디어")) {
+      return "Contest";
+    }
+    if (containsAny(text, "인턴", "채용", "취업", "일자리", "직무")) {
+      return "Internship";
+    }
+    if (containsAny(text, "멘토링", "멘토")) {
+      return "Mentoring";
+    }
+    if (containsAny(text, "교육", "세미나", "강연", "특강", "부트캠프", "캠프")) {
+      return "Seminar";
+    }
+    if (containsAny(text, "창업", "예비창업", "스타트업")) {
+      return "Startup";
+    }
+    return "External Activity";
+  }
+
+  private static boolean containsAny(String text, String... keywords) {
+    for (String keyword : keywords) {
+      if (text.contains(keyword)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static String safe(String value) {
+    return value == null ? "" : value;
+  }
+}

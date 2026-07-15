@@ -14,7 +14,7 @@ export default function FeaturedOpportunityCard({
   onToggleSave,
   compact = false,
 }) {
-  const { labelCategory, t } = useSettings();
+  const { labelCategory, labelLocation, t } = useSettings();
 
   return (
     <article
@@ -56,7 +56,7 @@ export default function FeaturedOpportunityCard({
               </div>
               <div>
                 <span>{t("detail.location")}</span>
-                <strong>{opportunity.location}</strong>
+                <strong>{labelLocation(opportunity.location)}</strong>
               </div>
             </div>
             <div className="featured-opportunity__actions">
