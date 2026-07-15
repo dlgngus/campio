@@ -9,6 +9,7 @@ For the selected Vercel + Render path, use:
 
 - Korean handoff: `docs/09-deployment/VERCEL_RENDER_HANDOFF_KO.md`
 - Technical checklist: `docs/09-deployment/VERCEL_RENDER_DEPLOY.md`
+- Step-by-step Korean deploy guide: `docs/09-deployment/DEPLOY_NOW_KO.md`
 
 Do not use the default H2 profile for production.
 Production schema changes are managed by Flyway migrations under `campio-backend/src/main/resources/db/migration`.
@@ -93,13 +94,12 @@ Environment variables:
 ```text
 SPRING_PROFILES_ACTIVE=prod
 PORT=8080
-SPRING_DATASOURCE_URL=jdbc:postgresql://HOST:5432/campio
-SPRING_DATASOURCE_USERNAME=campio
-SPRING_DATASOURCE_PASSWORD=...
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/campio
 FRONTEND_ORIGIN=https://your-frontend-domain.example
 CAMPIO_ADMIN_EMAIL=admin@example.com
 CAMPIO_ADMIN_PASSWORD=...
-CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP=true
+CAMPIO_INGESTION_BOOTSTRAP_SOURCES_ENABLED=false
+CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP=false
 CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY=true
 ```
 
@@ -116,7 +116,7 @@ For Render:
 - Root directory: repository root
 - Dockerfile path: `campio-backend/Dockerfile`
 - Health check path: `/api/health`
-- Add a managed PostgreSQL database and use its internal connection values for the datasource env vars.
+- Add a managed PostgreSQL database and put its Internal Database URL in `DATABASE_URL`.
 - Set `FRONTEND_ORIGIN` to the exact Vercel origin, for example `https://campio.vercel.app`.
 
 Production admin bootstrap:
@@ -125,7 +125,8 @@ Production admin bootstrap:
 - The backend creates that admin user on startup if the email does not already exist.
 - Campio no longer inserts sample opportunities, posts, mentors, or users automatically.
 - Public opportunity data must come from ingestion: manual admin import, approved API/RSS sources, or approved controlled HTML sources.
-- Set `CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP=true` on the first deploy if the production database should fetch enabled real sources immediately after startup.
+- Keep `CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP=false` for the first deploy unless the sources have been reviewed and intentionally enabled.
+- If you intentionally want startup ingestion, set both `CAMPIO_INGESTION_BOOTSTRAP_SOURCES_ENABLED=true` and `CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP=true`, or enable sources through the admin API first.
 - Keep `CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY=true` to avoid recrawling on every backend restart after data exists.
 
 Docker:
@@ -134,13 +135,12 @@ Docker:
 docker build -t campio-backend ./campio-backend
 docker run --rm -p 8080:8080 \
   -e SPRING_PROFILES_ACTIVE=prod \
-  -e SPRING_DATASOURCE_URL=jdbc:postgresql://HOST:5432/campio \
-  -e SPRING_DATASOURCE_USERNAME=campio \
-  -e SPRING_DATASOURCE_PASSWORD=... \
+  -e DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/campio \
   -e FRONTEND_ORIGIN=https://your-frontend-domain.example \
   -e CAMPIO_ADMIN_EMAIL=admin@example.com \
   -e CAMPIO_ADMIN_PASSWORD=... \
-  -e CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP=true \
+  -e CAMPIO_INGESTION_BOOTSTRAP_SOURCES_ENABLED=false \
+  -e CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP=false \
   -e CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY=true \
   campio-backend
 ```

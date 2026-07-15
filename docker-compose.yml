@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_DB: campio
       POSTGRES_USER: campio
@@ -27,7 +27,8 @@ services:
       FRONTEND_ORIGIN: http://localhost:5173,http://localhost:3000
       CAMPIO_ADMIN_EMAIL: admin@example.com
       CAMPIO_ADMIN_PASSWORD: change-me
-      CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP: "true"
+      CAMPIO_INGESTION_BOOTSTRAP_SOURCES_ENABLED: "false"
+      CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP: "false"
       CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY: "true"
     ports:
       - "8080:8080"

@@ -12,7 +12,7 @@
 - 백엔드 Dockerfile: `campio-backend/Dockerfile`
 - Render Blueprint: `render.yaml`
 - 운영 DB 마이그레이션: `campio-backend/src/main/resources/db/migration/V1__initial_schema.sql`
-- 실제 데이터 자동 수집 옵션
+- 실제 데이터 수집 옵션은 기본 비활성화
 - K-Startup, 기업마당 실제 데이터 수집기
 - mock 데이터 제거
 
@@ -36,6 +36,7 @@ campio-postgres
 Render에서 입력해야 할 값:
 
 ```text
+DATABASE_URL=Render PostgreSQL Internal Database URL
 FRONTEND_ORIGIN=https://나중에-생길-vercel-url.vercel.app
 CAMPIO_ADMIN_EMAIL=관리자이메일
 CAMPIO_ADMIN_PASSWORD=강한비밀번호
@@ -120,14 +121,12 @@ Render 백엔드:
 
 ```text
 SPRING_PROFILES_ACTIVE=prod
-PORT=8080
-SPRING_DATASOURCE_URL=Render PostgreSQL connectionString
-SPRING_DATASOURCE_USERNAME=Render PostgreSQL user
-SPRING_DATASOURCE_PASSWORD=Render PostgreSQL password
+DATABASE_URL=Render PostgreSQL Internal Database URL
 FRONTEND_ORIGIN=https://너의-vercel-url.vercel.app
 CAMPIO_ADMIN_EMAIL=관리자이메일
 CAMPIO_ADMIN_PASSWORD=강한비밀번호
-CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP=true
+CAMPIO_INGESTION_BOOTSTRAP_SOURCES_ENABLED=false
+CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP=false
 CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY=true
 ```
 
@@ -158,23 +157,24 @@ curl https://너의-render-backend-url.onrender.com/api/opportunities
 
 ## 7. 데이터 수집 동작
 
-첫 Render 배포 후 백엔드가 켜지면 자동으로 실제 데이터를 수집합니다.
+첫 Render 배포 후 백엔드가 켜져도 기본값으로는 자동 수집하지 않습니다.
 
 현재 자동 수집 소스:
 
 - K-Startup 모집중 사업공고
 - 기업마당 지원사업 공고
 
-자동 수집 조건:
+자동 수집을 의도적으로 켜려면:
 
 ```text
+CAMPIO_INGESTION_BOOTSTRAP_SOURCES_ENABLED=true
 CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP=true
 CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY=true
 ```
 
 의미:
 
-- 서버 첫 실행 시 실제 데이터 자동 수집
+- 서버 첫 실행 시 활성화된 소스만 자동 수집
 - 이미 공개 공고 데이터가 있으면 재시작 때는 자동 수집 스킵
 - 상시접수처럼 마감일이 애매한 데이터는 공개하지 않고 raw에만 보관
 
@@ -205,22 +205,21 @@ Render FRONTEND_ORIGIN
 
 확인:
 
-- `SPRING_DATASOURCE_URL`
-- `SPRING_DATASOURCE_USERNAME`
-- `SPRING_DATASOURCE_PASSWORD`
+- `DATABASE_URL`
 
-`render.yaml`로 만들면 보통 자동 연결됩니다.
+수동 Web Service에서는 Render PostgreSQL의 Internal Database URL을 `DATABASE_URL`에 넣습니다.
 
 ### 데이터가 비어 있음
 
 확인:
 
 ```text
+CAMPIO_INGESTION_BOOTSTRAP_SOURCES_ENABLED=true
 CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP=true
 CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY=true
 ```
 
-Render 로그에서 crawl job 성공 여부를 확인합니다.
+기본값은 자동 수집 비활성화입니다. 실제 소스를 검토한 뒤 관리자 화면/API에서 소스를 활성화하고 crawl job을 실행하세요.
 
 ## 9. 참고 문서
 

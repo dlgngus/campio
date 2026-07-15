@@ -23,6 +23,9 @@ public class DataBootstrapper {
   @Value("${campio.admin.password:}")
   private String adminPassword;
 
+  @Value("${campio.ingestion.bootstrap-sources-enabled:false}")
+  private boolean bootstrapSourcesEnabled;
+
   @Bean
   CommandLineRunner bootstrapAdminAndSources(
       UserRepository userRepository,
@@ -81,7 +84,7 @@ public class DataBootstrapper {
     source.setCategoryHint(categoryHint);
     source.setCrawlIntervalMinutes(1440);
     source.setRobotsAllowed(true);
-    source.setEnabled(true);
+    source.setEnabled(bootstrapSourcesEnabled);
     source.setFailureCount(0);
     source.setCreatedAt(LocalDateTime.now());
     source.setUpdatedAt(LocalDateTime.now());

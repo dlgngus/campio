@@ -28,8 +28,15 @@ CAMPIO_ADMIN_PASSWORD=strong-password
 Keep these enabled:
 
 ```text
-CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP=true
+CAMPIO_INGESTION_BOOTSTRAP_SOURCES_ENABLED=false
+CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP=false
 CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY=true
+```
+
+For manual Render setup, copy the PostgreSQL Internal Database URL into:
+
+```text
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DB
 ```
 
 After deploy, check:
@@ -87,6 +94,6 @@ In the browser:
 
 Expected production data after the first backend startup:
 
-- K-Startup public startup opportunities
-- 기업마당 public government support opportunities
-- Ambiguous deadline records stay in `raw_opportunities` and do not appear publicly until reviewed.
+- No crawl runs automatically by default.
+- K-Startup and 기업마당 source definitions are available but disabled unless explicitly enabled.
+- New real data should enter `raw_opportunities` first and then be reviewed or published.

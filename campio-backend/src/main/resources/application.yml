@@ -2,6 +2,8 @@ server:
   port: ${PORT:8080}
 
 spring:
+  flyway:
+    enabled: false
   datasource:
     url: jdbc:h2:mem:campio;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driverClassName: org.h2.Driver
@@ -24,11 +26,15 @@ spring:
 
 campio:
   frontend-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
+  flyway:
+    enabled: ${CAMPIO_FLYWAY_ENABLED:true}
+    baseline-on-migrate: ${CAMPIO_FLYWAY_BASELINE_ON_MIGRATE:true}
   auth:
     allow-mock-user: true
   admin:
     email: ${CAMPIO_ADMIN_EMAIL:}
     password: ${CAMPIO_ADMIN_PASSWORD:}
   ingestion:
+    bootstrap-sources-enabled: ${CAMPIO_INGESTION_BOOTSTRAP_SOURCES_ENABLED:false}
     auto-run-on-startup: ${CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP:false}
     auto-run-only-when-empty: ${CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY:true}

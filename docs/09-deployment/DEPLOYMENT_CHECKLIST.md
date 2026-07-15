@@ -17,13 +17,12 @@
 - Set Render health check path to `/api/health`.
 - Deploy backend with `SPRING_PROFILES_ACTIVE=prod`.
 - Set backend environment variables:
-  - `SPRING_DATASOURCE_URL`
-  - `SPRING_DATASOURCE_USERNAME`
-  - `SPRING_DATASOURCE_PASSWORD`
+  - `DATABASE_URL` with the Render PostgreSQL Internal Database URL
   - `FRONTEND_ORIGIN`
   - `CAMPIO_ADMIN_EMAIL`
   - `CAMPIO_ADMIN_PASSWORD`
-  - `CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP=true` for first production data fill
+  - `CAMPIO_INGESTION_BOOTSTRAP_SOURCES_ENABLED=false` unless real sources have been reviewed
+  - `CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP=false` unless real sources have been reviewed
   - `CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY=true`
   - `PORT` if the host does not inject it automatically
 - Confirm backend health:
@@ -46,7 +45,7 @@
 - Confirm each source allows the intended collection method.
 - Record source name, type, base URL, category hint, and crawl interval.
 - Decide whether each source is production-ready or staging-only.
-- Import or crawl into `raw_opportunities` first. For a fresh production database, enable startup crawl or run crawl jobs after deploy.
+- Import or crawl into `raw_opportunities` first. For a fresh production database, keep startup crawl disabled until sources have been reviewed.
 - Review raw records before publishing to `opportunities`.
 - Keep source attribution and original apply/source URLs visible.
 

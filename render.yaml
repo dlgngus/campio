@@ -11,26 +11,20 @@ services:
         value: prod
       - key: PORT
         value: 8080
-      - key: SPRING_DATASOURCE_URL
+      - key: DATABASE_URL
         fromDatabase:
           name: campio-postgres
           property: connectionString
-      - key: SPRING_DATASOURCE_USERNAME
-        fromDatabase:
-          name: campio-postgres
-          property: user
-      - key: SPRING_DATASOURCE_PASSWORD
-        fromDatabase:
-          name: campio-postgres
-          property: password
       - key: FRONTEND_ORIGIN
         sync: false
       - key: CAMPIO_ADMIN_EMAIL
         sync: false
       - key: CAMPIO_ADMIN_PASSWORD
         sync: false
+      - key: CAMPIO_INGESTION_BOOTSTRAP_SOURCES_ENABLED
+        value: "false"
       - key: CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP
-        value: "true"
+        value: "false"
       - key: CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY
         value: "true"
 

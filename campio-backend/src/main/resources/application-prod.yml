@@ -23,19 +23,22 @@ spring:
       hibernate:
         format_sql: false
   flyway:
-    enabled: true
-    baseline-on-migrate: true
+    enabled: false
   jackson:
     serialization:
       write-dates-as-timestamps: false
 
 campio:
   frontend-origin: ${FRONTEND_ORIGIN}
+  flyway:
+    enabled: ${CAMPIO_FLYWAY_ENABLED:true}
+    baseline-on-migrate: ${CAMPIO_FLYWAY_BASELINE_ON_MIGRATE:true}
   auth:
     allow-mock-user: false
   admin:
     email: ${CAMPIO_ADMIN_EMAIL:}
     password: ${CAMPIO_ADMIN_PASSWORD:}
   ingestion:
+    bootstrap-sources-enabled: ${CAMPIO_INGESTION_BOOTSTRAP_SOURCES_ENABLED:false}
     auto-run-on-startup: ${CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP:false}
     auto-run-only-when-empty: ${CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY:true}

@@ -25,7 +25,7 @@ The backend currently bootstraps real source configurations for:
 
 Run crawl jobs for these sources to fetch current public announcements. Each adapter follows public pagination links, capped at 20 pages per crawl, and publishes valid records with parsed title, organization, start date, deadline, category, and source URL. Records with ambiguous deadlines, such as open-ended `상시 접수`, remain in `raw_opportunities` for review instead of being auto-published.
 
-For deployment, set `CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP=true` to run enabled sources after the backend starts. Keep `CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY=true` so automatic startup ingestion only runs when no published opportunities exist. This prevents a fresh production database from launching with an empty opportunity feed without recrawling on every restart.
+For deployment, keep `CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP=false` until the production sources have been reviewed. If you intentionally want startup ingestion, set `CAMPIO_INGESTION_BOOTSTRAP_SOURCES_ENABLED=true` or enable sources through the admin API, then set `CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP=true`. Keep `CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY=true` so automatic startup ingestion only runs when no published opportunities exist.
 
 ## Allowed Sources
 
