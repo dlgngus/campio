@@ -11,6 +11,7 @@ import CommunityPage from "../pages/CommunityPage.jsx";
 import MentorsPage from "../pages/MentorsPage.jsx";
 import ProfilePage from "../pages/ProfilePage.jsx";
 import AdminOpportunitiesPage from "../pages/AdminOpportunitiesPage.jsx";
+import AdminIngestionPage from "../pages/AdminIngestionPage.jsx";
 
 const routes = [
   { path: "/", element: <Navigate to="/home" replace /> },
@@ -28,6 +29,7 @@ const routes = [
       { path: "/mentors", element: <MentorsPage /> },
       { path: "/profile", element: <ProfilePage /> },
       { path: "/admin/opportunities", element: <AdminOpportunitiesPage /> },
+      { path: "/admin/ingestion", element: <AdminIngestionPage /> },
     ],
   },
   { path: "*", element: <Navigate to="/home" replace /> },

@@ -258,6 +258,55 @@
   align-items: start;
 }
 
+.ingestion-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.ingestion-stack {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.field-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-ink);
+  font-size: var(--font-body-sm);
+}
+
+.field-check input {
+  width: 16px;
+  height: 16px;
+}
+
+.inline-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.inline-actions .button {
+  min-height: 34px;
+  padding: 0 var(--space-3);
+  font-size: var(--font-caption);
+}
+
+.admin-table--ingestion .admin-row {
+  grid-template-columns: minmax(150px, 1.4fr) 70px 80px minmax(130px, 1fr) minmax(150px, auto);
+}
+
+.admin-table--jobs .admin-row {
+  grid-template-columns: 70px 80px 120px 80px minmax(160px, 1fr);
+}
+
+.admin-table--raw .admin-row {
+  grid-template-columns: minmax(220px, 1fr) 110px 80px minmax(130px, 0.8fr);
+}
+
 .form-error {
   margin: 0;
   color: #ef4444;

@@ -88,6 +88,16 @@ export default function Navbar() {
             <span>{t(link.labelKey)}</span>
           </NavLink>
         ))}
+        {user?.role === "ADMIN" ? (
+          <>
+            <NavLink to="/admin/opportunities" className={({ isActive }) => `navbar__link${isActive ? " active" : ""}`}>
+              <span>Admin</span>
+            </NavLink>
+            <NavLink to="/admin/ingestion" className={({ isActive }) => `navbar__link${isActive ? " active" : ""}`}>
+              <span>Crawl</span>
+            </NavLink>
+          </>
+        ) : null}
       </nav>
       <div className="navbar__actions">
         <select

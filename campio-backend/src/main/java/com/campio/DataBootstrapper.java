@@ -41,17 +41,22 @@ public class DataBootstrapper {
     if (adminEmail == null || adminEmail.isBlank() || adminPassword == null || adminPassword.isBlank()) {
       return;
     }
-    if (userRepository.findByEmail(adminEmail).isPresent()) {
+    User admin = userRepository.findByEmail(adminEmail).orElseGet(User::new);
+    boolean existingUser = admin.getId() != null;
+    if (existingUser && "ADMIN".equalsIgnoreCase(admin.getRole()) && passwordEncoder.matches(adminPassword, admin.getPassword())) {
       return;
     }
 
-    User admin = new User();
-    admin.setEmail(adminEmail);
+    if (!existingUser) {
+      admin.setEmail(adminEmail);
+      admin.setCreatedAt(LocalDateTime.now());
+    }
     admin.setPassword(passwordEncoder.encode(adminPassword));
-    admin.setName("Admin");
+    if (admin.getName() == null || admin.getName().isBlank()) {
+      admin.setName("Admin");
+    }
     admin.setRole("ADMIN");
     admin.setVerified(true);
-    admin.setCreatedAt(LocalDateTime.now());
     admin.setUpdatedAt(LocalDateTime.now());
     userRepository.save(admin);
   }
