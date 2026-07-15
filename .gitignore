@@ -1,0 +1,22 @@
+.DS_Store
+
+# Frontend
+campio-frontend/node_modules/
+campio-frontend/dist/
+campio-frontend/.env
+campio-frontend/.env.local
+campio-frontend/.env.production
+
+# Backend
+campio-backend/target/
+campio-backend/.env
+
+# Local deployment
+.env
+
+# Logs
+*.log
+
+.env
+.env.*
+!.env.example

@@ -1,0 +1,162 @@
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-size: var(--font-body);
+  letter-spacing: var(--tracking-body);
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  border: 0;
+}
+
+button {
+  cursor: pointer;
+}
+
+img,
+svg {
+  display: block;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.page {
+  animation: page-entry 300ms ease-out;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding-top: var(--nav-height);
+  overflow-x: clip;
+}
+
+.app-main {
+  width: min(1200px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: var(--space-7) 0 calc(var(--space-9) + 48px);
+}
+
+.public-main {
+  min-height: 100vh;
+}
+
+.stack {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.muted {
+  color: var(--color-ink-muted);
+}
+
+.soft {
+  color: var(--color-ink-soft);
+}
+
+.accent-link {
+  color: var(--color-accent-blue);
+}
+
+.two-column {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.page-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+.page-kicker {
+  margin: 0 0 var(--space-2);
+  color: var(--color-ink-soft);
+  font-size: var(--font-caption);
+}
+
+.page-title {
+  margin: 0;
+  font-size: var(--font-display-md);
+  line-height: 1.02;
+  letter-spacing: var(--tracking-display-md);
+}
+
+.subtle-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.form-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@keyframes page-entry {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 860px) {
+  .app-main {
+    width: min(100% - 24px, 1200px);
+    padding-top: var(--space-5);
+  }
+
+  .page-header {
+    display: grid;
+    align-items: start;
+  }
+
+  .page-title {
+    font-size: var(--font-title);
+  }
+
+  .two-column,
+  .subtle-grid {
+    grid-template-columns: 1fr;
+  }
+}

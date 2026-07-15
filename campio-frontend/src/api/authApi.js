@@ -1,0 +1,8 @@
+import { request } from "./client.js";
+
+export const authApi = {
+  signup: (body) => request("/api/auth/signup", { method: "POST", body: JSON.stringify(body) }),
+  login: (body) => request("/api/auth/login", { method: "POST", body: JSON.stringify(body) }),
+  me: () => request("/api/auth/me"),
+  logout: () => request("/api/auth/logout", { method: "POST" }),
+};

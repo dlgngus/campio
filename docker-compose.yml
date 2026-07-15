@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: campio
+      POSTGRES_USER: campio
+      POSTGRES_PASSWORD: campio
+    ports:
+      - "5432:5432"
+    volumes:
+      - campio-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campio -d campio"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./campio-backend
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/campio
+      SPRING_DATASOURCE_USERNAME: campio
+      SPRING_DATASOURCE_PASSWORD: campio
+      FRONTEND_ORIGIN: http://localhost:5173,http://localhost:3000
+      CAMPIO_ADMIN_EMAIL: admin@example.com
+      CAMPIO_ADMIN_PASSWORD: change-me
+      CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP: "true"
+      CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY: "true"
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./campio-frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:8080
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  campio-postgres-data:

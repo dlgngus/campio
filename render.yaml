@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: campio-backend
+    runtime: docker
+    plan: free
+    dockerContext: ./campio-backend
+    dockerfilePath: ./campio-backend/Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: PORT
+        value: 8080
+      - key: SPRING_DATASOURCE_URL
+        fromDatabase:
+          name: campio-postgres
+          property: connectionString
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: campio-postgres
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: campio-postgres
+          property: password
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: CAMPIO_ADMIN_EMAIL
+        sync: false
+      - key: CAMPIO_ADMIN_PASSWORD
+        sync: false
+      - key: CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP
+        value: "true"
+      - key: CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY
+        value: "true"
+
+databases:
+  - name: campio-postgres
+    databaseName: campio
+    user: campio

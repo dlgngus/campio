@@ -1,0 +1,41 @@
+server:
+  forward-headers-strategy: native
+  servlet:
+    session:
+      cookie:
+        secure: true
+        same-site: none
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driverClassName: org.postgresql.Driver
+  h2:
+    console:
+      enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+campio:
+  frontend-origin: ${FRONTEND_ORIGIN}
+  auth:
+    allow-mock-user: false
+  admin:
+    email: ${CAMPIO_ADMIN_EMAIL:}
+    password: ${CAMPIO_ADMIN_PASSWORD:}
+  ingestion:
+    auto-run-on-startup: ${CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP:false}
+    auto-run-only-when-empty: ${CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY:true}
