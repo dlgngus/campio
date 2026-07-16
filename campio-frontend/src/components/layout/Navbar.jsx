@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { Moon, Sun } from "lucide-react";
 import { authApi } from "../../api/authApi.js";
-import { AUTH_CHANGE_EVENT, isAuthenticated, setAuthenticated } from "../../app/authSession.js";
+import { setAuthenticated } from "../../app/authSession.js";
 import { useSettings } from "../../app/settings.jsx";
 import Avatar from "../common/Avatar.jsx";
 import Button from "../common/Button.jsx";
@@ -16,50 +15,9 @@ const links = [
   { to: "/saved", labelKey: "nav.saved" },
 ];
 
-export default function Navbar() {
+export default function Navbar({ user, authenticated, onLoggedOut }) {
   const { language, setLanguage, theme, setTheme, t } = useSettings();
   const navigate = useNavigate();
-  const [authenticated, setAuthenticatedState] = useState(() => isAuthenticated());
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    const handleAuthChange = () => {
-      setAuthenticatedState(isAuthenticated());
-    };
-
-    window.addEventListener(AUTH_CHANGE_EVENT, handleAuthChange);
-    window.addEventListener("storage", handleAuthChange);
-    return () => {
-      window.removeEventListener(AUTH_CHANGE_EVENT, handleAuthChange);
-      window.removeEventListener("storage", handleAuthChange);
-    };
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadUser() {
-      try {
-        const me = await authApi.me();
-        if (mounted) {
-          setUser(me);
-          setAuthenticated(true);
-          setAuthenticatedState(true);
-        }
-      } catch {
-        if (mounted) {
-          setUser(null);
-          setAuthenticated(false);
-        }
-      }
-    }
-
-    loadUser();
-    return () => {
-      mounted = false;
-    };
-  }, [authenticated]);
-
   const handleLogout = async () => {
     try {
       await authApi.logout();
@@ -67,6 +25,7 @@ export default function Navbar() {
       // Ignore backend errors and clear local session state anyway.
     } finally {
       setAuthenticated(false);
+      onLoggedOut();
       navigate("/home");
     }
   };

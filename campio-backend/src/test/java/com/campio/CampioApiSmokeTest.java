@@ -132,6 +132,16 @@ class CampioApiSmokeTest {
   }
 
   @Test
+  void homeFeedReturnsDashboardSectionsInOneRequest() throws Exception {
+    mockMvc.perform(get("/api/opportunities/home-feed"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.recommended").isArray())
+        .andExpect(jsonPath("$.closing").isArray())
+        .andExpect(jsonPath("$.popular").isArray())
+        .andExpect(jsonPath("$.latest").isArray());
+  }
+
+  @Test
   void unverifiedStudentCannotUseMentorService() throws Exception {
     User student = userRepository.findByEmail("ryan@campus.edu").orElseThrow();
     student.setVerified(false);

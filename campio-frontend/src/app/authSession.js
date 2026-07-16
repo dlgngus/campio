@@ -14,12 +14,14 @@ export function setAuthenticated(value) {
     return;
   }
 
+  const previous = isAuthenticated();
   if (value) {
     window.localStorage.setItem(AUTH_STORAGE_KEY, "true");
   } else {
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
   }
 
-  window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
+  if (previous !== Boolean(value)) {
+    window.dispatchEvent(new Event(AUTH_CHANGE_EVENT));
+  }
 }
-

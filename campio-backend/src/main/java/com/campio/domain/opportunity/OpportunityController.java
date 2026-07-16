@@ -45,6 +45,11 @@ public class OpportunityController {
         page, size, q, target, category, region, deadlineSoon, online, saved, sort, session);
   }
 
+  @GetMapping("/home-feed")
+  public OpportunityHomeResponse home(HttpSession session) {
+    return opportunityService.home(session);
+  }
+
   @GetMapping("/batch")
   public List<OpportunityResponse> batch(
       @RequestParam List<Long> ids, HttpSession session) {

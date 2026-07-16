@@ -1,8 +1,28 @@
-import { request } from "./client.js";
+import { isApiStatus, request } from "./client.js";
 import { normalizeOpportunity, normalizeOpportunityList } from "./transformers.js";
 
 export const opportunityApi = {
   list: async () => normalizeOpportunityList(await request("/api/opportunities")),
+  home: async () => {
+    try {
+      const result = await request("/api/opportunities/home-feed");
+      return {
+        recommended: normalizeOpportunityList(result.recommended),
+        closing: normalizeOpportunityList(result.closing),
+        popular: normalizeOpportunityList(result.popular),
+        latest: normalizeOpportunityList(result.latest),
+      };
+    } catch (error) {
+      if (!isApiStatus(error, 400) && !isApiStatus(error, 404)) throw error;
+      const [recommended, closing, popular, latest] = await Promise.all([
+        opportunityApi.recommended(),
+        opportunityApi.closingSoon(),
+        opportunityApi.popular(),
+        opportunityApi.search({ page: 0, size: 12, sort: "latest" }),
+      ]);
+      return { recommended, closing, popular, latest: latest.content };
+    }
+  },
   search: async (params = {}, options = {}) => {
     const query = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {

@@ -89,6 +89,46 @@ public class OpportunityService {
   }
 
   @Transactional(readOnly = true)
+  public OpportunityHomeResponse home(HttpSession session) {
+    LocalDate today = LocalDate.now();
+    Set<String> terms = userService.recommendationTerms(session);
+    Set<Long> savedIds = savedOpportunityIds(session, false);
+    Page<Opportunity> candidates = opportunityRepository.findByStatusIgnoreCase(
+        PUBLISHED, PageRequest.of(0, 200, Sort.by(Sort.Order.desc("createdAt"))));
+    List<Opportunity> active = filterStudentRelevant(hydrate(candidates.getContent()))
+        .stream()
+        .filter(opportunity -> opportunity.getDeadline() == null || !opportunity.getDeadline().isBefore(today))
+        .collect(Collectors.toList());
+
+    List<Opportunity> latest = active.stream().limit(12).collect(Collectors.toList());
+    List<Opportunity> recommended = active.stream()
+        .sorted(Comparator
+            .comparingInt((Opportunity opportunity) -> recommendationScore(opportunity, terms)).reversed()
+            .thenComparing(opportunity -> opportunity.getDeadline() == null ? LocalDate.MAX : opportunity.getDeadline()))
+        .limit(8)
+        .collect(Collectors.toList());
+    List<Opportunity> closing = active.stream()
+        .filter(opportunity -> opportunity.getDeadline() != null
+            && !opportunity.getDeadline().isAfter(today.plusDays(30)))
+        .sorted(Comparator.comparing(Opportunity::getDeadline))
+        .limit(8)
+        .collect(Collectors.toList());
+    List<Opportunity> popular = active.stream()
+        .sorted(Comparator
+            .comparingInt((Opportunity opportunity) -> opportunity.getPopularityCount() == null
+                ? 0 : opportunity.getPopularityCount()).reversed()
+            .thenComparing(Opportunity::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+        .limit(8)
+        .collect(Collectors.toList());
+
+    return new OpportunityHomeResponse(
+        toResponses(recommended, savedIds),
+        toResponses(closing, savedIds),
+        toResponses(popular, savedIds),
+        toResponses(latest, savedIds));
+  }
+
+  @Transactional(readOnly = true)
   public List<OpportunityResponse> recommended(HttpSession session) {
     LocalDate today = LocalDate.now();
     Set<String> terms = userService.recommendationTerms(session);
@@ -283,6 +323,10 @@ public class OpportunityService {
             : savedOpportunityRepository.findByUserId(userId).stream()
                 .map(savedOpportunity -> savedOpportunity.getOpportunityId())
                 .collect(Collectors.toSet());
+    return toResponses(opportunities, savedIds);
+  }
+
+  private List<OpportunityResponse> toResponses(List<Opportunity> opportunities, Set<Long> savedIds) {
     return opportunities.stream()
         .map(opportunity -> toResponse(opportunity, savedIds.contains(opportunity.getId())))
         .collect(Collectors.toList());

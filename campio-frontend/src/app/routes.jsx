@@ -17,7 +17,7 @@ import MentorDetailPage from "../pages/MentorDetailPage.jsx";
 import AdminMentorsPage from "../pages/AdminMentorsPage.jsx";
 
 const routes = [
-  { path: "/", element: <Navigate to="/explore" replace /> },
+  { path: "/", element: <Navigate to="/home" replace /> },
   { path: "/login", element: <LoginPage /> },
   { path: "/signup", element: <SignupPage /> },
   { path: "/onboarding", element: <OnboardingPage /> },

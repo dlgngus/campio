@@ -1,9 +1,5 @@
-import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { Bookmark, Compass, Home, LogIn, MessageCircle, User } from "lucide-react";
-import { AUTH_CHANGE_EVENT, isAuthenticated } from "../../app/authSession.js";
-import { authApi } from "../../api/authApi.js";
-import { setAuthenticated } from "../../app/authSession.js";
 import { useSettings } from "../../app/settings.jsx";
 import "./layout.css";
 
@@ -14,40 +10,8 @@ const baseTabs = [
   { to: "/community", labelKey: "nav.community", icon: MessageCircle },
 ];
 
-export default function MobileTabBar() {
+export default function MobileTabBar({ authenticated }) {
   const { t } = useSettings();
-  const [authenticated, setAuthenticatedState] = useState(() => isAuthenticated());
-
-  useEffect(() => {
-    const handleAuthChange = () => setAuthenticatedState(isAuthenticated());
-    window.addEventListener(AUTH_CHANGE_EVENT, handleAuthChange);
-    window.addEventListener("storage", handleAuthChange);
-    return () => {
-      window.removeEventListener(AUTH_CHANGE_EVENT, handleAuthChange);
-      window.removeEventListener("storage", handleAuthChange);
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    authApi.me()
-      .then(() => {
-        if (active) {
-          setAuthenticated(true);
-          setAuthenticatedState(true);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setAuthenticated(false);
-          setAuthenticatedState(false);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
   const tabs = [
     ...baseTabs,
     authenticated

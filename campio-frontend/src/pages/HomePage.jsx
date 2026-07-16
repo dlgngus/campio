@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { Bookmark, CalendarClock, Search, Sparkles, TrendingUp } from "lucide-react";
 import EmptyState from "../components/common/EmptyState.jsx";
 import LoadingSkeleton from "../components/common/LoadingSkeleton.jsx";
 import SectionHeader from "../components/common/SectionHeader.jsx";
 import FeaturedOpportunityCard from "../components/opportunity/FeaturedOpportunityCard.jsx";
 import OpportunityGrid from "../components/opportunity/OpportunityGrid.jsx";
-import { authApi } from "../api/authApi.js";
 import { opportunityApi } from "../api/opportunityApi.js";
 import { savedApi } from "../api/savedApi.js";
 import { isApiStatus } from "../api/client.js";
@@ -17,7 +16,7 @@ import "./pages.css";
 export default function HomePage() {
   const { language, t } = useSettings();
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
+  const { user } = useOutletContext();
   const [data, setData] = useState({ recommended: [], closing: [], popular: [], all: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -28,22 +27,14 @@ export default function HomePage() {
     setLoading(true);
     setError("");
     try {
-      const [recommended, closing, popular, latest] = await Promise.all([
-        opportunityApi.recommended(),
-        opportunityApi.closingSoon(),
-        opportunityApi.popular(),
-        opportunityApi.search({ page: 0, size: 12, sort: "latest" }),
-      ]);
-      let me = null;
-      try {
-        me = await authApi.me();
-        setAuthenticated(true);
-      } catch (authError) {
-        if (isApiStatus(authError, 401)) setAuthenticated(false);
-      }
+      const feed = await opportunityApi.home();
       if (active()) {
-        setUser(me);
-        setData({ recommended, closing: closing.slice(0, 4), popular: popular.slice(0, 4), all: latest.content });
+        setData({
+          recommended: feed.recommended,
+          closing: feed.closing.slice(0, 4),
+          popular: feed.popular.slice(0, 4),
+          all: feed.latest,
+        });
       }
     } catch (err) {
       if (active()) setError(err.message || t("common.errorDescription"));
