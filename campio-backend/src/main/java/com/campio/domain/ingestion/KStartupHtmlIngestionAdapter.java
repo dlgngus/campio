@@ -28,6 +28,8 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
 
   private static final int MAX_PAGES = 20;
   private static final int MAX_DETAIL_FETCHES = 40;
+  private static final int MAX_BIZINFO_DETAIL_FETCHES = 80;
+  private static final long DETAIL_REQUEST_DELAY_MS = 150L;
   private static final int MAX_RESPONSE_CHARS = 2_000_000;
   private static final Pattern LISTING_PATTERN = Pattern.compile(
       "([가-힣A-Za-z0-9ㆍ·&/()\\[\\].,'\\-\\s]+?)\\s+D-\\d+\\s+(.+?)\\s+새로운게시글\\s+(.+?)\\s+등록일자\\s+(\\d{4}-\\d{2}-\\d{2})\\s+시작일자\\s+(\\d{4}-\\d{2}-\\d{2})\\s+마감일자\\s+(\\d{4}-\\d{2}-\\d{2})\\s+조회",
@@ -109,9 +111,10 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
     for (int page = 2; page <= lastPage; page++) {
       results.addAll(parse(source, fetchPage(withPage(source.getBaseUrl(), page))));
     }
-    return source.getBaseUrl().contains("k-startup.go.kr") && !source.getBaseUrl().contains("/mock/")
-        ? enrichKStartupDetails(results)
-        : results;
+    if (source.getBaseUrl().contains("/mock/")) return results;
+    if (source.getBaseUrl().contains("k-startup.go.kr")) return enrichKStartupDetails(results);
+    if (source.getBaseUrl().contains("bizinfo.go.kr")) return enrichBizInfoDetails(results);
+    return results;
   }
 
   private String fetchPage(String url) {
@@ -231,8 +234,6 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
           .category(StudentOpportunityPolicy.classifyCategory(title, category, content))
           .description(content)
           .requirements("신청기간: " + period)
-          .benefits("지원 분야: " + category)
-          .target(owner)
           .deadline(deadline)
           .startDate(startDate == null ? registeredAt : startDate)
           .location(location)
@@ -268,6 +269,7 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
         .category(firstNonBlank(source.getCategoryHint(), category))
         .description(String.join(" / ", category, organization, "접수 " + startDate + " ~ " + deadline))
         .requirements("접수기간: " + startDate + " ~ " + deadline)
+        .applicationMethod("K-Startup 온라인 접수")
         .deadline(deadline)
         .startDate(startDate)
         .location(location)
@@ -300,6 +302,7 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
             .description(firstNonBlank(summary, item.getDescription()))
             .requirements(limitText(joinSections(requirements, documents)))
             .benefits(limitText(benefits))
+            .applicationMethod(firstNonBlank(extractKStartupApplicationMethod(html), item.getApplicationMethod()))
             .target(firstNonBlank(target, item.getTarget()))
             .applyUrl(firstNonBlank(applyUrl, item.getApplyUrl()))
             .build());
@@ -308,6 +311,107 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
       }
     }
     return enriched;
+  }
+
+  private List<FetchedRawOpportunity> enrichBizInfoDetails(List<FetchedRawOpportunity> items) {
+    List<FetchedRawOpportunity> enriched = new ArrayList<>(items.size());
+    int attempted = 0;
+    for (FetchedRawOpportunity item : items) {
+      boolean relevant = StudentOpportunityPolicy.hasStudentAudienceSignal(
+          item.getRawTitle(), item.getOrganization(), item.getRawContent(), item.getTarget(), item.getTags());
+      if (!relevant || attempted >= MAX_BIZINFO_DETAIL_FETCHES || item.getSourceUrl() == null) {
+        enriched.add(item);
+        continue;
+      }
+      try {
+        if (attempted > 0) pauseBetweenDetailRequests();
+        attempted++;
+        enriched.add(enrichBizInfoDetail(item, fetchPage(item.getSourceUrl())));
+      } catch (RuntimeException ex) {
+        enriched.add(item);
+      }
+    }
+    return enriched;
+  }
+
+  FetchedRawOpportunity enrichBizInfoDetail(FetchedRawOpportunity item, String html) {
+    String overviewHtml = extractBizInfoFieldHtml(html, "사업개요");
+    List<String> overviewLines = htmlLines(overviewHtml);
+    int firstBullet = firstBulletIndex(overviewLines, 0);
+    int secondBullet = firstBulletIndex(overviewLines, firstBullet + 1);
+    String description = firstBullet > 0
+        ? String.join("\n", overviewLines.subList(0, firstBullet))
+        : String.join("\n", overviewLines);
+    String target = firstBullet >= 0 ? removeBullet(overviewLines.get(firstBullet)) : item.getTarget();
+    String benefits = secondBullet >= 0
+        ? String.join("\n", overviewLines.subList(secondBullet, overviewLines.size()))
+        : item.getBenefits();
+    String applicationPeriod = clean(stripTags(extractBizInfoFieldHtml(html, "신청기간")));
+    String applicationMethod = clean(stripTags(extractBizInfoFieldHtml(html, "사업신청 방법")));
+    String contact = clean(stripTags(extractBizInfoFieldHtml(html, "문의처")));
+    String requirements = joinWithNewline(
+        target == null || target.isBlank() ? "" : "신청 대상: " + target,
+        applicationPeriod.isBlank() ? "" : "신청기간: " + applicationPeriod);
+    String methodWithContact = joinWithNewline(
+        applicationMethod,
+        contact.isBlank() ? "" : "문의: " + contact);
+
+    return item.toBuilder()
+        .description(limitText(firstNonBlank(description, item.getDescription())))
+        .requirements(limitText(firstNonBlank(requirements, item.getRequirements())))
+        .benefits(limitText(firstNonBlank(benefits, item.getBenefits())))
+        .applicationMethod(limitText(firstNonBlank(methodWithContact, item.getApplicationMethod())))
+        .target(limitText(firstNonBlank(target, item.getTarget()), 255))
+        .build();
+  }
+
+  private String extractKStartupApplicationMethod(String html) {
+    Pattern pattern = Pattern.compile(
+        "(?is)신청방법</p>\\s*<div[^>]*class=\"[^\"]*txt[^\"]*\"[^>]*>(.*?)</div>");
+    return extractFirst(html, pattern);
+  }
+
+  private String extractBizInfoFieldHtml(String html, String label) {
+    Pattern pattern = Pattern.compile(
+        "(?is)<span[^>]*class=\"[^\"]*s_title[^\"]*\"[^>]*>\\s*"
+            + Pattern.quote(label)
+            + "\\s*</span>\\s*<div[^>]*class=\"[^\"]*txt[^\"]*\"[^>]*>(.*?)</div>");
+    Matcher matcher = pattern.matcher(html == null ? "" : html);
+    return matcher.find() ? matcher.group(1) : "";
+  }
+
+  private List<String> htmlLines(String html) {
+    String withLines = (html == null ? "" : html)
+        .replaceAll("(?i)<br\\s*/?>", "\n")
+        .replaceAll("(?i)</p>", "\n")
+        .replaceAll("(?i)</li>", "\n");
+    String decoded = decodeHtml(stripTags(withLines));
+    List<String> lines = new ArrayList<>();
+    for (String line : decoded.split("[\\r\\n]+")) {
+      String cleaned = line.replace("&nbsp;", " ").replaceAll("\\s+", " ").trim();
+      if (!cleaned.isBlank()) lines.add(cleaned);
+    }
+    return lines;
+  }
+
+  private int firstBulletIndex(List<String> lines, int start) {
+    for (int index = Math.max(0, start); index < lines.size(); index++) {
+      if (lines.get(index).startsWith("☞")) return index;
+    }
+    return -1;
+  }
+
+  private String removeBullet(String value) {
+    return value == null ? "" : value.replaceFirst("^☞\\s*", "").trim();
+  }
+
+  private void pauseBetweenDetailRequests() {
+    try {
+      Thread.sleep(DETAIL_REQUEST_DELAY_MS);
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      throw new BadRequestException("HTML detail ingestion was interrupted");
+    }
   }
 
   private String extractLabeledSection(String html, String label) {
@@ -329,9 +433,19 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
     return first + " / 제출서류: " + second;
   }
 
+  private String joinWithNewline(String first, String second) {
+    if (first == null || first.isBlank()) return second == null ? "" : second;
+    if (second == null || second.isBlank()) return first;
+    return first + "\n" + second;
+  }
+
   private String limitText(String value) {
+    return limitText(value, 10_000);
+  }
+
+  private String limitText(String value, int maxLength) {
     String cleaned = value == null ? "" : value.trim();
-    return cleaned.length() <= 10_000 ? cleaned : cleaned.substring(0, 10_000);
+    return cleaned.length() <= maxLength ? cleaned : cleaned.substring(0, maxLength);
   }
 
   private List<String> buildTags(String sourceName, String category, String ownerOrLocation) {

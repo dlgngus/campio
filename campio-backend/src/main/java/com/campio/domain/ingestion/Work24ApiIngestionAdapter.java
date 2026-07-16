@@ -108,6 +108,7 @@ public class Work24ApiIngestionAdapter implements IngestionAdapter {
           .description(description)
           .requirements(joinNonBlank(" / ", "학력: " + education, "경력: " + career))
           .benefits(joinNonBlank(" / ", salary, workSchedule))
+          .applicationMethod("고용24 채용정보 페이지에서 온라인 지원")
           .target(joinNonBlank(" / ", education, career))
           .deadline(deadline)
           .startDate(parseDate(text(item, "regDt")))

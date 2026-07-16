@@ -31,6 +31,7 @@ export default function AdminOpportunitiesPage() {
     description: "",
     requirements: "",
     benefits: "",
+    applicationMethod: "",
     target: "",
     recommended: false,
     newThisWeek: false,
@@ -80,6 +81,7 @@ export default function AdminOpportunitiesPage() {
       description: opportunity.description || "",
       requirements: opportunity.requirements || "",
       benefits: opportunity.benefits || "",
+      applicationMethod: opportunity.applicationMethod || "",
       target: opportunity.target || "",
       recommended: Boolean(opportunity.recommended),
       newThisWeek: Boolean(opportunity.newThisWeek),
@@ -99,6 +101,7 @@ export default function AdminOpportunitiesPage() {
       description: "",
       requirements: "",
       benefits: "",
+      applicationMethod: "",
       target: "",
       recommended: false,
       newThisWeek: false,
@@ -185,6 +188,7 @@ export default function AdminOpportunitiesPage() {
             <Input label="Description" value={form.description} onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))} />
             <Input label="Requirements" value={form.requirements} onChange={(e) => setForm((c) => ({ ...c, requirements: e.target.value }))} />
             <Input label="Benefits" value={form.benefits} onChange={(e) => setForm((c) => ({ ...c, benefits: e.target.value }))} />
+            <Input label="Application method" value={form.applicationMethod} onChange={(e) => setForm((c) => ({ ...c, applicationMethod: e.target.value }))} />
             <label className="field">
               <span className="field__label">Recommended</span>
               <input type="checkbox" checked={form.recommended} onChange={(e) => setForm((c) => ({ ...c, recommended: e.target.checked }))} />

@@ -26,6 +26,8 @@ public class OpportunityRequest {
   private String requirements;
   @Size(max = 30000)
   private String benefits;
+  @Size(max = 30000)
+  private String applicationMethod;
   @Size(max = 255)
   private String target;
   private LocalDate deadline;

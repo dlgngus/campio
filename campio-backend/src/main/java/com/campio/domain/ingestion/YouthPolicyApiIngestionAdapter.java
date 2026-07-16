@@ -81,6 +81,7 @@ public class YouthPolicyApiIngestionAdapter implements IngestionAdapter {
         firstText(item, "majrRqisCn", "majorRequirement"),
         firstText(item, "empmSttsCn", "employmentRequirement"),
         firstText(item, "accrRqisCn", "educationRequirement"));
+    String applicationMethod = firstText(item, "rqutProcCn", "aplyMthdCn", "applicationMethod");
     if (isBlank(title)) return null;
     List<LocalDate> dates = parseDates(period);
     LocalDate deadline = dates.isEmpty() ? null : dates.get(dates.size() - 1);
@@ -99,6 +100,7 @@ public class YouthPolicyApiIngestionAdapter implements IngestionAdapter {
         .description(description)
         .requirements(requirements)
         .benefits(support)
+        .applicationMethod(applicationMethod)
         .target(firstNonBlank(target, "청년"))
         .deadline(deadline)
         .startDate(dates.isEmpty() ? null : dates.get(0))

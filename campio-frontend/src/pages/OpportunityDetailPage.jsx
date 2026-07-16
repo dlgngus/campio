@@ -45,25 +45,24 @@ export default function OpportunityDetailPage() {
     setError("");
     try {
       const detail = await opportunityApi.detail(id);
-      const [relatedPage, posts, mentorList] = await Promise.all([
-        opportunityApi.search({ page: 0, size: 4, category: detail.category, sort: "deadline" }),
-        communityApi.listPosts(),
-        mentorApi.list().catch((err) => isApiStatus(err, 401) || isApiStatus(err, 403) ? [] : Promise.reject(err)),
-      ]);
       if (!shouldUpdate()) return;
       setOpportunity(detail);
       setSaved(detail.saved);
-      try {
-        const records = await applicationApi.list();
-        const record = records.find((item) => String(item.opportunityId) === String(detail.id));
-        if (record) {
-          setApplicationRecordId(record.id);
-          setStatus(record.status || "Interested");
-        } else {
-          setApplicationRecordId(null);
-          setStatus("Interested");
-        }
-      } catch (recordError) {
+      setLoading(false);
+
+      const [relatedPage, posts, mentorList, records] = await Promise.all([
+        opportunityApi.search({ page: 0, size: 4, category: detail.category, sort: "deadline" })
+          .catch(() => ({ content: [] })),
+        communityApi.listPosts().catch(() => []),
+        mentorApi.list().catch(() => []),
+        applicationApi.list().catch(() => []),
+      ]);
+      if (!shouldUpdate()) return;
+      const record = records.find((item) => String(item.opportunityId) === String(detail.id));
+      if (record) {
+        setApplicationRecordId(record.id);
+        setStatus(record.status || "Interested");
+      } else {
         setApplicationRecordId(null);
         setStatus("Interested");
       }
@@ -109,7 +108,13 @@ export default function OpportunityDetailPage() {
 
   const displayLocation = resolveOpportunityLocation(opportunity);
   const fallback = t("detail.sourceFallback");
-  const displayPeriod = [opportunity.startDate, opportunity.endDate].filter(Boolean).join(" - ") || fallback;
+  const pendingInfo = t("detail.pendingInfo");
+  const displayPeriod = [opportunity.startDate, opportunity.endDate].filter(Boolean).join(" - ") || pendingInfo;
+  const isPlaceholder = (value) => !value
+    || value.includes("원문 공고")
+    || value.includes("원본 출처")
+    || value.includes("official source");
+  const description = isPlaceholder(opportunity.description) ? null : opportunity.description;
 
   function openApplyUrl() {
     try {
@@ -216,7 +221,7 @@ export default function OpportunityDetailPage() {
         </div>
         <div className="info-item">
           <span>{t("detail.target")}</span>
-          <strong>{opportunity.target || fallback}</strong>
+          <strong>{opportunity.target || pendingInfo}</strong>
         </div>
       </section>
 
@@ -224,20 +229,20 @@ export default function OpportunityDetailPage() {
         <div className="detail-copy">
           <div className="copy-panel">
             <h2>{t("detail.description")}</h2>
-            <p>{opportunity.description || fallback}</p>
+            <p className="pre-wrap">{description || pendingInfo}</p>
           </div>
-          <div className="copy-panel">
+          {opportunity.requirements ? <div className="copy-panel">
             <h2>{t("detail.requirements")}</h2>
-            <p>{opportunity.requirements || fallback}</p>
-          </div>
-          <div className="copy-panel">
+            <p className="pre-wrap">{opportunity.requirements}</p>
+          </div> : null}
+          {opportunity.benefits ? <div className="copy-panel">
             <h2>{t("detail.benefits")}</h2>
-            <p>{opportunity.benefits || fallback}</p>
-          </div>
-          <div className="copy-panel">
+            <p className="pre-wrap">{opportunity.benefits}</p>
+          </div> : null}
+          {opportunity.applicationMethod ? <div className="copy-panel">
             <h2>{t("detail.howToApply")}</h2>
-            <p>{t("detail.applyCopy")}</p>
-          </div>
+            <p className="pre-wrap">{opportunity.applicationMethod}</p>
+          </div> : null}
         </div>
         <aside className="copy-panel">
           <h2>{t("detail.record")}</h2>

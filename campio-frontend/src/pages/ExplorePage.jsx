@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import OpportunityFilters from "../components/opportunity/OpportunityFilters.jsx";
 import { categories, regions, sortOptions } from "../components/opportunity/OpportunityFilters.jsx";
@@ -41,6 +41,7 @@ export default function ExplorePage() {
   const [savingIds, setSavingIds] = useState([]);
 
   const [reloadKey, setReloadKey] = useState(0);
+  const lastTextSearch = useRef(null);
 
   function searchRequest() {
     return {
@@ -59,6 +60,9 @@ export default function ExplorePage() {
 
   useEffect(() => {
     const controller = new AbortController();
+    const textSearch = `${filters.query}\u0000${filters.target}`;
+    const delay = lastTextSearch.current === null || lastTextSearch.current === textSearch ? 0 : 300;
+    lastTextSearch.current = textSearch;
     const timer = window.setTimeout(async () => {
       setLoading(true);
       setError("");
@@ -78,7 +82,7 @@ export default function ExplorePage() {
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
-    }, 300);
+    }, delay);
     return () => {
       window.clearTimeout(timer);
       controller.abort();

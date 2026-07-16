@@ -217,6 +217,7 @@ public class OpportunityService {
     opportunity.setDescription(request.getDescription());
     opportunity.setRequirements(request.getRequirements());
     opportunity.setBenefits(request.getBenefits());
+    opportunity.setApplicationMethod(request.getApplicationMethod());
     opportunity.setTarget(request.getTarget());
     opportunity.setDeadline(request.getDeadline());
     opportunity.setStartDate(request.getStartDate());
@@ -364,6 +365,8 @@ public class OpportunityService {
         textContains(builder, root.get("organization"), text),
         textContains(builder, root.get("category"), text),
         textContains(builder, root.get("description"), text),
+        textContains(builder, root.get("requirements"), text),
+        textContains(builder, root.get("benefits"), text),
         textContains(builder, root.get("target"), text),
         textContains(builder, root.get("location"), text),
         tag == null ? builder.disjunction() : textContains(builder, tag, text)));
@@ -472,6 +475,7 @@ public class OpportunityService {
         .description(opportunity.getDescription())
         .requirements(opportunity.getRequirements())
         .benefits(opportunity.getBenefits())
+        .applicationMethod(opportunity.getApplicationMethod())
         .target(opportunity.getTarget())
         .deadline(opportunity.getDeadline())
         .startDate(opportunity.getStartDate())

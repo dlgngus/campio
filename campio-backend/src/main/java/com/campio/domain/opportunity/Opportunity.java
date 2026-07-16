@@ -43,6 +43,9 @@ public class Opportunity {
   @Column(columnDefinition = "text")
   private String benefits;
 
+  @Column(columnDefinition = "text")
+  private String applicationMethod;
+
   private String target;
   private LocalDate deadline;
   private LocalDate startDate;

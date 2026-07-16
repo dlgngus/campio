@@ -153,6 +153,7 @@ public class IngestionService {
     opportunity.setDescription(firstNonBlank(request.getDescription(), raw.getRawContent()));
     opportunity.setRequirements(request.getRequirements());
     opportunity.setBenefits(request.getBenefits());
+    opportunity.setApplicationMethod(request.getApplicationMethod());
     opportunity.setTarget(request.getTarget());
     opportunity.setDeadline(request.getDeadline());
     opportunity.setStartDate(request.getStartDate());
@@ -379,6 +380,7 @@ public class IngestionService {
     opportunity.setDescription(firstNonBlank(item.getDescription(), item.getRawContent()));
     opportunity.setRequirements(item.getRequirements());
     opportunity.setBenefits(item.getBenefits());
+    opportunity.setApplicationMethod(item.getApplicationMethod());
     opportunity.setTarget(item.getTarget());
     opportunity.setDeadline(item.getDeadline());
     opportunity.setStartDate(item.getStartDate());
@@ -416,6 +418,10 @@ public class IngestionService {
       }
       if (!hasText(opportunity.getBenefits()) && hasText(item.getBenefits())) {
         opportunity.setBenefits(item.getBenefits());
+        changed = true;
+      }
+      if (!hasText(opportunity.getApplicationMethod()) && hasText(item.getApplicationMethod())) {
+        opportunity.setApplicationMethod(item.getApplicationMethod());
         changed = true;
       }
       if (!hasText(opportunity.getTarget()) && hasText(item.getTarget())) {

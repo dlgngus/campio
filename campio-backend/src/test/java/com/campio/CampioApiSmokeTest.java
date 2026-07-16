@@ -277,6 +277,7 @@ class CampioApiSmokeTest {
                         + "\"organization\":\"Smoke Test Organization\","
                         + "\"category\":\"Internship\","
                         + "\"description\":\"Published from raw data.\","
+                        + "\"applicationMethod\":\"Apply through the Campio form.\","
                         + "\"deadline\":\"2026-12-31\","
                         + "\"tags\":[\"smoke\",\"ingestion\"]"
                         + "}"))
@@ -290,7 +291,8 @@ class CampioApiSmokeTest {
     mockMvc.perform(get("/api/opportunities/" + opportunityId))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.title").value("Published Smoke Test Opportunity"))
-        .andExpect(jsonPath("$.organization").value("Smoke Test Organization"));
+        .andExpect(jsonPath("$.organization").value("Smoke Test Organization"))
+        .andExpect(jsonPath("$.applicationMethod").value("Apply through the Campio form."));
 
     mockMvc.perform(
             post("/api/admin/ingestion/raw-opportunities/" + publishRawId + "/publish")

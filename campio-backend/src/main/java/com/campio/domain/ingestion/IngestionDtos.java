@@ -126,6 +126,7 @@ class PublishRawOpportunityRequest {
   private String description;
   private String requirements;
   private String benefits;
+  private String applicationMethod;
   private String target;
   private LocalDate deadline;
   private LocalDate startDate;
