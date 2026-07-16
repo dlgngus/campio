@@ -30,7 +30,15 @@ const STUDENT_RELEVANT_KEYWORDS = [
   "부트캠프",
 ];
 
+const STUDENT_CATEGORIES = new Set([
+  "internship", "contest", "competition", "external activity", "scholarship", "exchange",
+  "research", "startup", "seminar", "mentoring", "campus event", "full-time job",
+]);
+
 export function isStudentRelevantOpportunity(opportunity) {
+  if (STUDENT_CATEGORIES.has(String(opportunity?.category || "").trim().toLowerCase())) {
+    return true;
+  }
   const text = [
     opportunity?.title,
     opportunity?.organization,

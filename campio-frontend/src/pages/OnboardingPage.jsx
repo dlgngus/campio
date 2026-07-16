@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "../components/common/Button.jsx";
 import FilterChip from "../components/common/FilterChip.jsx";
@@ -27,8 +27,24 @@ export default function OnboardingPage() {
   const navigate = useNavigate();
   const [selected, setSelected] = useState(["Internship", "Development"]);
   const [form, setForm] = useState({ school: "", major: "", grade: "" });
+  const [schoolEmail, setSchoolEmail] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [developmentCode, setDevelopmentCode] = useState("");
+  const [verified, setVerified] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    authApi.me().then((user) => {
+      if (!active) return;
+      setSchoolEmail(user.email || "");
+      setVerified(Boolean(user.verified));
+    }).catch(() => navigate("/login"));
+    return () => {
+      active = false;
+    };
+  }, [navigate]);
 
   function toggleInterest(item) {
     setSelected((current) =>
@@ -45,6 +61,10 @@ export default function OnboardingPage() {
           className="form-grid"
           onSubmit={async (event) => {
             event.preventDefault();
+            if (!verified) {
+              setError("학교 이메일 인증을 먼저 완료해 주세요.");
+              return;
+            }
             setError("");
             setSubmitting(true);
             try {
@@ -62,6 +82,68 @@ export default function OnboardingPage() {
             }
           }}
         >
+          <Input
+            label={t("signup.schoolEmail")}
+            name="schoolEmail"
+            type="email"
+            value={schoolEmail}
+            onChange={(event) => setSchoolEmail(event.target.value)}
+            disabled={verified}
+            required
+          />
+          {!verified ? (
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={submitting}
+                onClick={async () => {
+                  setSubmitting(true);
+                  setError("");
+                  try {
+                    const challenge = await authApi.requestSchoolVerification({ schoolEmail });
+                    setDevelopmentCode(challenge.developmentCode || "");
+                  } catch (err) {
+                    setError(err.message || t("common.errorDescription"));
+                  } finally {
+                    setSubmitting(false);
+                  }
+                }}
+              >
+                인증 코드 받기
+              </Button>
+              {developmentCode ? <p className="verification-hint">개발 인증 코드: {developmentCode}</p> : null}
+              <Input
+                label="인증 코드"
+                name="verificationCode"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                maxLength="6"
+                value={verificationCode}
+                onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, ""))}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={submitting || verificationCode.length !== 6}
+                onClick={async () => {
+                  setSubmitting(true);
+                  setError("");
+                  try {
+                    await authApi.verifySchool({ code: verificationCode });
+                    setVerified(true);
+                    setDevelopmentCode("");
+                  } catch (err) {
+                    setError(err.message || t("common.errorDescription"));
+                  } finally {
+                    setSubmitting(false);
+                  }
+                }}
+              >
+                학교 이메일 인증
+              </Button>
+            </>
+          ) : null}
           <Input
             label={t("onboarding.school")}
             name="school"

@@ -5,4 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CrawlJobRepository extends JpaRepository<CrawlJob, Long> {
   List<CrawlJob> findAllByOrderByIdDesc();
+  boolean existsBySourceIdAndStatus(Long sourceId, String status);
 }

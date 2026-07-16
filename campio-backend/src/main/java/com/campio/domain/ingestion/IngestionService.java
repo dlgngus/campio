@@ -30,6 +30,7 @@ public class IngestionService {
   private final OpportunityRepository opportunityRepository;
   private final IngestionAdapterRegistry adapterRegistry;
   private final UserService userService;
+  private final SourceUrlPolicy sourceUrlPolicy;
 
   @Transactional(readOnly = true)
   public List<OpportunitySourceResponse> listSources(HttpSession session) {
@@ -232,7 +233,7 @@ public class IngestionService {
   public List<CrawlJobResponse> runEnabledSources() {
     List<CrawlJobResponse> responses = new ArrayList<>();
     for (OpportunitySource source : sourceRepository.findAll()) {
-      if (!source.isEnabled()) {
+      if (!source.isEnabled() || !source.isRobotsAllowed()) {
         continue;
       }
       CrawlJob job = new CrawlJob();
@@ -250,6 +251,13 @@ public class IngestionService {
   private CrawlJobResponse runCrawlJobInternal(Long id) {
     CrawlJob job = findCrawlJob(id);
     OpportunitySource source = findSource(job.getSourceId());
+    if (!source.isEnabled() || !source.isRobotsAllowed()) {
+      throw new BadRequestException("Source must be enabled and approved before it can run");
+    }
+    if (crawlJobRepository.existsBySourceIdAndStatus(source.getId(), CrawlJobStatus.RUNNING.name())) {
+      throw new BadRequestException("A crawl job is already running for this source");
+    }
+    sourceUrlPolicy.requirePublicHttpUrl(source.getBaseUrl());
     job.setStatus(CrawlJobStatus.RUNNING.name());
     job.setStartedAt(LocalDateTime.now());
     job.setErrorMessage(null);
@@ -297,7 +305,30 @@ public class IngestionService {
     return toJobResponse(crawlJobRepository.save(job));
   }
 
+  @Transactional
+  public List<CrawlJobResponse> runDueSources() {
+    LocalDateTime now = LocalDateTime.now();
+    List<CrawlJobResponse> responses = new ArrayList<>();
+    for (OpportunitySource source : sourceRepository.findAll()) {
+      int interval = Math.max(defaultInt(source.getCrawlIntervalMinutes()), 60);
+      boolean due = source.getLastCrawledAt() == null
+          || !source.getLastCrawledAt().plusMinutes(interval).isAfter(now);
+      if (!source.isEnabled() || !source.isRobotsAllowed() || !due) {
+        continue;
+      }
+      CrawlJob job = new CrawlJob();
+      job.setSourceId(source.getId());
+      job.setStatus(CrawlJobStatus.PENDING.name());
+      job.setItemsFound(0);
+      job.setItemsCreated(0);
+      job.setItemsUpdated(0);
+      responses.add(runCrawlJobInternal(crawlJobRepository.save(job).getId()));
+    }
+    return responses;
+  }
+
   private void applySourceRequest(OpportunitySource source, OpportunitySourceRequest request) {
+    sourceUrlPolicy.requirePublicHttpUrl(request.getBaseUrl());
     source.setName(request.getName());
     source.setType(request.getType().name());
     source.setBaseUrl(request.getBaseUrl());
@@ -320,10 +351,9 @@ public class IngestionService {
       return;
     }
     String category = firstNonBlank(item.getCategory(), source.getCategoryHint());
-    if (!StudentOpportunityPolicy.isStudentRelevant(
+    if (!StudentOpportunityPolicy.hasStudentAudienceSignal(
         item.getRawTitle(),
         item.getOrganization(),
-        category,
         firstNonBlank(item.getDescription(), item.getRawContent()),
         null,
         item.getTags())) {

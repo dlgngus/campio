@@ -12,9 +12,13 @@ import MentorsPage from "../pages/MentorsPage.jsx";
 import ProfilePage from "../pages/ProfilePage.jsx";
 import AdminOpportunitiesPage from "../pages/AdminOpportunitiesPage.jsx";
 import AdminIngestionPage from "../pages/AdminIngestionPage.jsx";
+import LandingPage from "../pages/LandingPage.jsx";
+import CommunityDetailPage from "../pages/CommunityDetailPage.jsx";
+import MentorDetailPage from "../pages/MentorDetailPage.jsx";
+import AdminMentorsPage from "../pages/AdminMentorsPage.jsx";
 
 const routes = [
-  { path: "/", element: <Navigate to="/home" replace /> },
+  { path: "/", element: <LandingPage /> },
   { path: "/login", element: <LoginPage /> },
   { path: "/signup", element: <SignupPage /> },
   { path: "/onboarding", element: <OnboardingPage /> },
@@ -26,10 +30,13 @@ const routes = [
       { path: "/opportunities/:id", element: <OpportunityDetailPage /> },
       { path: "/saved", element: <SavedPage /> },
       { path: "/community", element: <CommunityPage /> },
+      { path: "/community/:id", element: <CommunityDetailPage /> },
       { path: "/mentors", element: <MentorsPage /> },
+      { path: "/mentors/:id", element: <MentorDetailPage /> },
       { path: "/profile", element: <ProfilePage /> },
       { path: "/admin/opportunities", element: <AdminOpportunitiesPage /> },
       { path: "/admin/ingestion", element: <AdminIngestionPage /> },
+      { path: "/admin/mentors", element: <AdminMentorsPage /> },
     ],
   },
   { path: "*", element: <Navigate to="/home" replace /> },

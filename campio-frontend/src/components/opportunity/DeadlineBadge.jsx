@@ -3,6 +3,9 @@ import { useSettings } from "../../app/settings.jsx";
 
 export default function DeadlineBadge({ deadline, urgent = false, accent = false }) {
   const { language } = useSettings();
+  if (!deadline) {
+    return <Badge className="deadline-badge deadline-badge--neutral">{language === "ko" ? "상시" : "Open"}</Badge>;
+  }
   const days = Math.ceil((new Date(deadline) - new Date()) / 86400000);
   const label =
     days < 0

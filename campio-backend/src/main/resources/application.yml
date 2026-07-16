@@ -14,12 +14,15 @@ spring:
       enabled: true
       path: /h2-console
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: create-drop
     show-sql: false
     properties:
       hibernate:
         format_sql: true
+  session:
+    store-type: none
   jackson:
     serialization:
       write-dates-as-timestamps: false
@@ -30,7 +33,11 @@ campio:
     enabled: ${CAMPIO_FLYWAY_ENABLED:true}
     baseline-on-migrate: ${CAMPIO_FLYWAY_BASELINE_ON_MIGRATE:true}
   auth:
-    allow-mock-user: true
+    allow-mock-user: false
+  school-verification:
+    expose-code: ${CAMPIO_SCHOOL_VERIFICATION_EXPOSE_CODE:true}
+    mail-enabled: ${CAMPIO_SCHOOL_VERIFICATION_MAIL_ENABLED:false}
+    mail-from: ${CAMPIO_SCHOOL_VERIFICATION_MAIL_FROM:no-reply@campio.local}
   admin:
     email: ${CAMPIO_ADMIN_EMAIL:}
     password: ${CAMPIO_ADMIN_PASSWORD:}
@@ -38,3 +45,5 @@ campio:
     bootstrap-sources-enabled: ${CAMPIO_INGESTION_BOOTSTRAP_SOURCES_ENABLED:false}
     auto-run-on-startup: ${CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP:false}
     auto-run-only-when-empty: ${CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY:true}
+    scheduler-enabled: ${CAMPIO_INGESTION_SCHEDULER_ENABLED:false}
+    scheduler-poll-ms: ${CAMPIO_INGESTION_SCHEDULER_POLL_MS:60000}

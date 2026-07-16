@@ -41,7 +41,7 @@ export default function AdminOpportunitiesPage() {
     setError("");
     setRequiresLogin(false);
     try {
-      const [me, items] = await Promise.all([authApi.me(), opportunityApi.list()]);
+      const [me, items] = await Promise.all([authApi.me(), opportunityApi.adminList()]);
       if (me.role !== "ADMIN") {
         throw new Error("Admin access required");
       }
@@ -124,7 +124,7 @@ export default function AdminOpportunitiesPage() {
       } else {
         await opportunityApi.create(payload);
       }
-      const items = await opportunityApi.list();
+      const items = await opportunityApi.adminList();
       setOpportunities(items);
       resetForm();
     } catch (err) {
@@ -144,7 +144,7 @@ export default function AdminOpportunitiesPage() {
     setError("");
     try {
       await opportunityApi.remove(id);
-      const items = await opportunityApi.list();
+      const items = await opportunityApi.adminList();
       setOpportunities(items);
       if (selectedId === id) {
         resetForm();
@@ -194,7 +194,7 @@ export default function AdminOpportunitiesPage() {
               <input type="checkbox" checked={form.newThisWeek} onChange={(e) => setForm((c) => ({ ...c, newThisWeek: e.target.checked }))} />
             </label>
             {error ? <p className="form-error">{error}</p> : null}
-            <div style={{ display: "flex", gap: 12 }}>
+            <div className="inline-actions">
               <Button type="submit" disabled={submitting}>{submitting ? "Saving..." : selectedId ? "Save changes" : "Create opportunity"}</Button>
               <Button variant="ghost" type="button" onClick={resetForm}>
                 Reset
@@ -237,7 +237,7 @@ export default function AdminOpportunitiesPage() {
                   <span>{opportunity.organization}</span>
                   <span>{opportunity.deadline}</span>
                   <span>{opportunity.status || t("admin.published")}</span>
-                  <span style={{ display: "flex", gap: 8 }}>
+                  <span className="inline-actions">
                     <button className="button button--secondary" type="button" onClick={() => beginEdit(opportunity)}>
                       Edit
                     </button>

@@ -17,6 +17,8 @@ import javax.xml.parsers.DocumentBuilderFactory;
 @RequiredArgsConstructor
 public class RssIngestionAdapter implements IngestionAdapter {
 
+  private static final int MAX_RESPONSE_CHARS = 2_000_000;
+
   private final RestTemplate ingestionRestTemplate;
 
   @Override
@@ -27,6 +29,9 @@ public class RssIngestionAdapter implements IngestionAdapter {
   @Override
   public List<FetchedRawOpportunity> fetch(OpportunitySource source) {
     String body = ingestionRestTemplate.getForObject(source.getBaseUrl(), String.class);
+    if (body != null && body.length() > MAX_RESPONSE_CHARS) {
+      throw new BadRequestException("RSS source response is too large");
+    }
     try {
       DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
       factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);

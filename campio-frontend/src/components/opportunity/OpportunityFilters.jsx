@@ -38,9 +38,9 @@ export const regions = [
   "Nationwide",
 ];
 
-export const sortOptions = ["deadline", "latest", "title"];
+export const sortOptions = ["deadline", "popular", "latest", "title"];
 
-export default function OpportunityFilters({ query, category, region, sortBy, deadlineOnly, onlineOnly, savedOnly, onChange }) {
+export default function OpportunityFilters({ query, target, category, region, sortBy, deadlineOnly, onlineOnly, savedOnly, onChange }) {
   const { labelCategory, labelLocation, t } = useSettings();
 
   return (
@@ -50,6 +50,12 @@ export default function OpportunityFilters({ query, category, region, sortBy, de
         placeholder={t("filters.placeholder")}
         value={query}
         onChange={(event) => onChange({ query: event.target.value })}
+      />
+      <Input
+        label={t("detail.target")}
+        placeholder={t("filters.targetPlaceholder")}
+        value={target}
+        onChange={(event) => onChange({ target: event.target.value })}
       />
       <div>
         <p className="opportunity-filters__label">{t("filters.category")}</p>

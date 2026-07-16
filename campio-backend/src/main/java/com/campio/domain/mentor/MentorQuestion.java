@@ -29,6 +29,9 @@ public class MentorQuestion {
   @Column(columnDefinition = "text")
   private String content;
 
+  @Column(columnDefinition = "text")
+  private String answer;
+
   private String status;
   private LocalDateTime createdAt;
   private LocalDateTime updatedAt;

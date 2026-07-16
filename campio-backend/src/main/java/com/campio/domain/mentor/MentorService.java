@@ -1,10 +1,20 @@
 package com.campio.domain.mentor;
 
-import com.campio.global.exception.NotFoundException;
+import com.campio.domain.opportunity.OpportunityRepository;
+import com.campio.domain.user.User;
+import com.campio.domain.user.UserRepository;
 import com.campio.domain.user.UserService;
+import com.campio.global.exception.BadRequestException;
+import com.campio.global.exception.ForbiddenException;
+import com.campio.global.exception.NotFoundException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -19,82 +29,173 @@ public class MentorService {
 
   private final MentorProfileRepository mentorProfileRepository;
   private final MentorQuestionRepository mentorQuestionRepository;
+  private final OpportunityRepository opportunityRepository;
   private final UserService userService;
+  private final UserRepository userRepository;
 
   @Transactional(readOnly = true)
-  public List<MentorProfileResponse> list() {
-    return mentorProfileRepository.findAll().stream().map(this::toResponse).collect(Collectors.toList());
+  public List<MentorProfileResponse> list(HttpSession session) {
+    return toResponses(mentorProfileRepository.findByAvailableTrueOrderByIdAsc(), session);
   }
 
   @Transactional(readOnly = true)
-  public MentorProfileResponse detail(Long id) {
-    return toResponse(findMentor(id));
+  public List<MentorProfileResponse> adminList(HttpSession session) {
+    userService.requireAdmin(session);
+    return toResponses(mentorProfileRepository.findAll(), session);
   }
 
-  @Transactional
-  public MentorProfileResponse create(MentorProfileRequest request) {
-    MentorProfile mentor = new MentorProfile();
-    mentor.setCompany(request.getCompany());
-    mentor.setPosition(request.getPosition());
-    mentor.setExperience(request.getExperience());
-    mentor.setHelpTopics(request.getHelpTopics());
-    mentor.setAvailable(request.isAvailable());
-    mentor.setCreatedAt(LocalDateTime.now());
-    mentor.setUpdatedAt(LocalDateTime.now());
-    return toResponse(mentorProfileRepository.save(mentor));
+  @Transactional(readOnly = true)
+  public MentorProfileResponse detail(Long id, HttpSession session) {
+    MentorProfile mentor = findMentor(id);
+    Long currentUserId = userService.optionalCurrentUserId(session);
+    if (!mentor.isAvailable()
+        && !userService.isAdmin(session)
+        && (currentUserId == null || !currentUserId.equals(mentor.getUserId()))) {
+      throw new NotFoundException("Mentor not found");
+    }
+    return toResponses(List.of(mentor), session).get(0);
   }
 
   @Transactional
   public MentorProfileResponse apply(MentorApplyRequest request, HttpSession session) {
-    MentorProfile mentor = new MentorProfile();
-    mentor.setUserId(userService.currentUserId(session));
-    mentor.setCompany(request.getCompany());
-    mentor.setPosition(request.getPosition());
-    mentor.setExperience(request.getExperience());
-    mentor.setHelpTopics(request.getHelpTopics());
+    User user = userService.findCurrentUser(session);
+    if (!user.isVerified()) throw new ForbiddenException("School verification is required");
+    MentorProfile mentor = mentorProfileRepository.findByUserId(user.getId()).orElseGet(MentorProfile::new);
+    if (mentor.getId() == null) {
+      mentor.setUserId(user.getId());
+      mentor.setCreatedAt(LocalDateTime.now());
+    }
+    mentor.setCompany(request.getCompany().trim());
+    mentor.setPosition(request.getPosition().trim());
+    mentor.setExperience(request.getExperience() == null ? null : request.getExperience().trim());
+    mentor.setHelpTopics(cleanTopics(request.getHelpTopics()));
     mentor.setAvailable(false);
-    mentor.setCreatedAt(LocalDateTime.now());
     mentor.setUpdatedAt(LocalDateTime.now());
-    return toResponse(mentorProfileRepository.save(mentor));
+    return toResponses(List.of(mentorProfileRepository.save(mentor)), session).get(0);
+  }
+
+  @Transactional
+  public MentorProfileResponse approve(Long mentorId, MentorApprovalRequest request, HttpSession session) {
+    userService.requireAdmin(session);
+    MentorProfile mentor = findMentor(mentorId);
+    mentor.setAvailable(request.isAvailable());
+    mentor.setUpdatedAt(LocalDateTime.now());
+    return toResponses(List.of(mentorProfileRepository.save(mentor)), session).get(0);
   }
 
   @Transactional
   public MentorQuestionResponse askQuestion(Long mentorId, MentorQuestionRequest request, HttpSession session) {
-    findMentor(mentorId);
+    MentorProfile mentor = findMentor(mentorId);
+    long userId = userService.currentUserId(session);
+    if (!mentor.isAvailable() && !userService.isAdmin(session) && !Long.valueOf(userId).equals(mentor.getUserId())) {
+      throw new NotFoundException("Mentor not found");
+    }
+    if (request.getOpportunityId() != null && !opportunityRepository.existsById(request.getOpportunityId())) {
+      throw new BadRequestException("Related opportunity not found");
+    }
     MentorQuestion question = new MentorQuestion();
     question.setMentorId(mentorId);
-    question.setUserId(userService.currentUserId(session));
+    question.setUserId(userId);
     question.setOpportunityId(request.getOpportunityId());
-    question.setContent(request.getContent());
+    question.setContent(request.getContent().trim());
     question.setStatus("OPEN");
     question.setCreatedAt(LocalDateTime.now());
     question.setUpdatedAt(LocalDateTime.now());
-    return toQuestionResponse(mentorQuestionRepository.save(question));
+    return toQuestionResponses(List.of(mentorQuestionRepository.save(question))).get(0);
+  }
+
+  @Transactional(readOnly = true)
+  public List<MentorQuestionResponse> myQuestions(HttpSession session) {
+    return toQuestionResponses(mentorQuestionRepository.findByUserIdOrderByCreatedAtDesc(userService.currentUserId(session)));
+  }
+
+  @Transactional(readOnly = true)
+  public List<MentorQuestionResponse> receivedQuestions(HttpSession session) {
+    MentorProfile mentor = mentorProfileRepository.findByUserId(userService.currentUserId(session))
+        .orElseThrow(() -> new NotFoundException("Mentor profile not found"));
+    return toQuestionResponses(mentorQuestionRepository.findByMentorIdOrderByCreatedAtDesc(mentor.getId()));
+  }
+
+  @Transactional
+  public MentorQuestionResponse answer(Long questionId, MentorAnswerRequest request, HttpSession session) {
+    MentorProfile mentor = mentorProfileRepository.findByUserId(userService.currentUserId(session))
+        .orElseThrow(() -> new NotFoundException("Mentor profile not found"));
+    MentorQuestion question = mentorQuestionRepository.findById(questionId)
+        .filter(item -> mentor.getId().equals(item.getMentorId()))
+        .orElseThrow(() -> new NotFoundException("Question not found"));
+    question.setAnswer(request.getAnswer().trim());
+    question.setStatus("ANSWERED");
+    question.setUpdatedAt(LocalDateTime.now());
+    return toQuestionResponses(List.of(mentorQuestionRepository.save(question))).get(0);
   }
 
   private MentorProfile findMentor(Long id) {
     return mentorProfileRepository.findById(id).orElseThrow(() -> new NotFoundException("Mentor not found"));
   }
 
-  private MentorProfileResponse toResponse(MentorProfile mentor) {
-    return MentorProfileResponse.builder()
-        .id(mentor.getId())
-        .company(mentor.getCompany())
-        .position(mentor.getPosition())
-        .experience(mentor.getExperience())
-        .helpTopics(mentor.getHelpTopics())
-        .available(mentor.isAvailable())
-        .build();
+  private List<String> cleanTopics(List<String> topics) {
+    if (topics == null) return Collections.emptyList();
+    return topics.stream().filter(java.util.Objects::nonNull).map(String::trim).filter(value -> !value.isBlank())
+        .distinct().limit(12).collect(Collectors.toList());
   }
 
-  private MentorQuestionResponse toQuestionResponse(MentorQuestion question) {
-    return MentorQuestionResponse.builder()
-        .id(question.getId())
-        .mentorId(question.getMentorId())
-        .opportunityId(question.getOpportunityId())
-        .content(question.getContent())
-        .status(question.getStatus())
-        .createdAt(question.getCreatedAt().format(FORMATTER))
-        .build();
+  private List<MentorProfileResponse> toResponses(List<MentorProfile> mentors, HttpSession session) {
+    if (mentors.isEmpty()) return Collections.emptyList();
+    Map<Long, User> users = usersById(mentors.stream().map(MentorProfile::getUserId).collect(Collectors.toSet()));
+    Set<Long> mentorIds = mentors.stream().map(MentorProfile::getId).collect(Collectors.toSet());
+    Map<Long, MentorQuestionRepository.MentorQuestionStats> stats = mentorQuestionRepository.statsByMentorIds(mentorIds)
+        .stream().collect(Collectors.toMap(MentorQuestionRepository.MentorQuestionStats::getMentorId, Function.identity()));
+    Long currentUserId = userService.optionalCurrentUserId(session);
+    return mentors.stream().map(mentor -> {
+      User user = users.get(mentor.getUserId());
+      MentorQuestionRepository.MentorQuestionStats mentorStats = stats.get(mentor.getId());
+      int responseRate = mentorStats == null || mentorStats.getTotalCount() == 0 ? 0
+          : (int) Math.round(mentorStats.getAnsweredCount() * 100.0 / mentorStats.getTotalCount());
+      return MentorProfileResponse.builder()
+          .id(mentor.getId())
+          .name(user == null ? "Campio Mentor" : user.getName())
+          .school(user == null ? null : user.getSchool())
+          .major(user == null ? null : user.getMajor())
+          .avatarUrl(user == null ? null : user.getAvatarUrl())
+          .company(mentor.getCompany())
+          .position(mentor.getPosition())
+          .experience(mentor.getExperience())
+          .helpTopics(mentor.getHelpTopics())
+          .available(mentor.isAvailable())
+          .own(currentUserId != null && currentUserId.equals(mentor.getUserId()))
+          .responseRate(responseRate)
+          .build();
+    }).collect(Collectors.toList());
+  }
+
+  private List<MentorQuestionResponse> toQuestionResponses(List<MentorQuestion> questions) {
+    if (questions.isEmpty()) return Collections.emptyList();
+    Map<Long, MentorProfile> mentors = mentorProfileRepository.findAllById(
+        questions.stream().map(MentorQuestion::getMentorId).collect(Collectors.toSet()))
+        .stream().collect(Collectors.toMap(MentorProfile::getId, Function.identity()));
+    Set<Long> userIds = questions.stream().map(MentorQuestion::getUserId).collect(Collectors.toSet());
+    userIds.addAll(mentors.values().stream().map(MentorProfile::getUserId).collect(Collectors.toSet()));
+    Map<Long, User> users = usersById(userIds);
+    return questions.stream().map(question -> {
+      MentorProfile mentor = mentors.get(question.getMentorId());
+      User mentorUser = mentor == null ? null : users.get(mentor.getUserId());
+      User questioner = users.get(question.getUserId());
+      return MentorQuestionResponse.builder()
+          .id(question.getId())
+          .mentorId(question.getMentorId())
+          .opportunityId(question.getOpportunityId())
+          .mentorName(mentorUser == null ? "Campio Mentor" : mentorUser.getName())
+          .questionerName(questioner == null ? "Campio User" : questioner.getName())
+          .content(question.getContent())
+          .answer(question.getAnswer())
+          .status(question.getStatus())
+          .createdAt(question.getCreatedAt().format(FORMATTER))
+          .build();
+    }).collect(Collectors.toList());
+  }
+
+  private Map<Long, User> usersById(Collection<Long> ids) {
+    if (ids.isEmpty()) return Collections.emptyMap();
+    return userRepository.findAllById(ids).stream().collect(Collectors.toMap(User::getId, Function.identity()));
   }
 }

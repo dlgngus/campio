@@ -23,13 +23,18 @@ public class CommunityController {
   private final CommunityService communityService;
 
   @GetMapping
-  public List<CommunityPostResponse> list() {
-    return communityService.listPosts();
+  public List<CommunityPostResponse> list(HttpSession session) {
+    return communityService.listPosts(session);
+  }
+
+  @GetMapping("/mine")
+  public List<CommunityPostResponse> mine(HttpSession session) {
+    return communityService.myPosts(session);
   }
 
   @GetMapping("/{id}")
-  public CommunityPostResponse detail(@PathVariable Long id) {
-    return communityService.detail(id);
+  public CommunityPostResponse detail(@PathVariable Long id, HttpSession session) {
+    return communityService.detail(id, session);
   }
 
   @PostMapping
@@ -55,7 +60,26 @@ public class CommunityController {
   }
 
   @GetMapping("/{id}/comments")
-  public List<CommentResponse> comments(@PathVariable Long id) {
-    return communityService.comments(id);
+  public List<CommentResponse> comments(@PathVariable Long id, HttpSession session) {
+    return communityService.comments(id, session);
+  }
+
+  @DeleteMapping("/{id}/comments/{commentId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void deleteComment(
+      @PathVariable Long id, @PathVariable Long commentId, HttpSession session) {
+    communityService.deleteComment(id, commentId, session);
+  }
+
+  @PostMapping("/{id}/save")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void save(@PathVariable Long id, HttpSession session) {
+    communityService.save(id, session);
+  }
+
+  @DeleteMapping("/{id}/save")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void unsave(@PathVariable Long id, HttpSession session) {
+    communityService.unsave(id, session);
   }
 }

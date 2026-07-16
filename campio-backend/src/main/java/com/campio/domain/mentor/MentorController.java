@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,18 +20,13 @@ public class MentorController {
   private final MentorService mentorService;
 
   @GetMapping
-  public List<MentorProfileResponse> list() {
-    return mentorService.list();
+  public List<MentorProfileResponse> list(HttpSession session) {
+    return mentorService.list(session);
   }
 
   @GetMapping("/{id}")
-  public MentorProfileResponse detail(@PathVariable Long id) {
-    return mentorService.detail(id);
-  }
-
-  @PostMapping
-  public MentorProfileResponse create(@RequestBody MentorProfileRequest request) {
-    return mentorService.create(request);
+  public MentorProfileResponse detail(@PathVariable Long id, HttpSession session) {
+    return mentorService.detail(id, session);
   }
 
   @PostMapping("/apply")
@@ -42,5 +38,21 @@ public class MentorController {
   public MentorQuestionResponse askQuestion(
       @PathVariable Long id, @Valid @RequestBody MentorQuestionRequest request, HttpSession session) {
     return mentorService.askQuestion(id, request, session);
+  }
+
+  @GetMapping("/questions/mine")
+  public List<MentorQuestionResponse> myQuestions(HttpSession session) {
+    return mentorService.myQuestions(session);
+  }
+
+  @GetMapping("/questions/received")
+  public List<MentorQuestionResponse> receivedQuestions(HttpSession session) {
+    return mentorService.receivedQuestions(session);
+  }
+
+  @PatchMapping("/questions/{questionId}/answer")
+  public MentorQuestionResponse answer(
+      @PathVariable Long questionId, @Valid @RequestBody MentorAnswerRequest request, HttpSession session) {
+    return mentorService.answer(questionId, request, session);
   }
 }

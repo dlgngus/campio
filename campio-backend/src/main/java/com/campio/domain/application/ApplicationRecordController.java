@@ -3,6 +3,7 @@ package com.campio.domain.application;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import javax.servlet.http.HttpSession;
+import javax.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -26,13 +27,14 @@ public class ApplicationRecordController {
   @PostMapping("/opportunities/{id}/apply-record")
   public ApplicationRecordResponse create(
       @PathVariable("id") Long opportunityId,
-      @RequestBody ApplicationRecordRequest request,
+      @Valid @RequestBody ApplicationRecordRequest request,
       HttpSession session) {
     return applicationRecordService.create(opportunityId, request, session);
   }
 
   @PatchMapping("/applications/{id}")
-  public ApplicationRecordResponse update(@PathVariable Long id, @RequestBody ApplicationRecordRequest request, HttpSession session) {
+  public ApplicationRecordResponse update(
+      @PathVariable Long id, @Valid @RequestBody ApplicationRecordRequest request, HttpSession session) {
     return applicationRecordService.update(id, request, session);
   }
 }

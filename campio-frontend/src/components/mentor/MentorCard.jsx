@@ -1,26 +1,26 @@
 import Badge from "../common/Badge.jsx";
+import Avatar from "../common/Avatar.jsx";
+import Button from "../common/Button.jsx";
 import { useSettings } from "../../app/settings.jsx";
 import "./mentor.css";
 
 export default function MentorCard({ mentor }) {
   const { language, labelCategory } = useSettings();
+  const name = mentor.name || (language === "ko" ? "Campio 멘토" : "Campio Mentor");
+  const affiliation = [mentor.school, mentor.major].filter(Boolean).join(" · ");
 
   return (
     <article className="mentor-card">
       <div>
-        <div className="mentor-card__avatar" aria-hidden="true">
-          {mentor.name.slice(0, 1)}
-        </div>
-        <h3>{mentor.name}</h3>
+        <Avatar src={mentor.avatarUrl} name={name} />
+        <h3>{name}</h3>
         <p>
           {mentor.position} at {mentor.company}
         </p>
       </div>
-      <p className="mentor-card__school">
-        {mentor.school} · {mentor.major}
-      </p>
+      {affiliation ? <p className="mentor-card__school">{affiliation}</p> : null}
       <div className="mentor-card__topics">
-        {mentor.helpTopics.map((topic) => (
+        {(mentor.helpTopics || []).map((topic) => (
           <Badge key={topic}>{labelCategory(topic)}</Badge>
         ))}
       </div>
@@ -33,6 +33,7 @@ export default function MentorCard({ mentor }) {
             ? "제한적"
             : "Limited"}
       </Badge>
+      <Button to={`/mentors/${mentor.id}`} variant="secondary">{language === "ko" ? "멘토 상세" : "View mentor"}</Button>
     </article>
   );
 }

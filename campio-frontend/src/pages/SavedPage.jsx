@@ -13,7 +13,7 @@ import { setAuthenticated } from "../app/authSession.js";
 import { useSettings } from "../app/settings.jsx";
 import "./pages.css";
 
-const tabs = ["Saved", "Deadline Soon", "Applied"];
+const tabs = ["Saved", "Deadline Soon", "APPLIED", "ARCHIVED"];
 
 export default function SavedPage() {
   const { labelStatus, t } = useSettings();
@@ -63,11 +63,6 @@ export default function SavedPage() {
   }, [t]);
 
   const applicationByOpportunityId = new Map(applications.map((record) => [record.opportunityId, record]));
-  const appliedOpportunityIds = new Set(
-    applications
-      .filter((record) => record.status === "Applied")
-      .map((record) => record.opportunityId)
-  );
   const today = new Date();
   const deadlineSoon = saved.filter((item) => {
     if (!item.deadline) return false;
@@ -75,10 +70,37 @@ export default function SavedPage() {
     const days = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
     return days >= 0 && days <= 14;
   });
-  const applied = allOpportunities
-    .filter((item) => appliedOpportunityIds.has(item.id))
-    .map((item) => ({ ...item, saved: saved.some((savedItem) => savedItem.id === item.id) || Boolean(applicationByOpportunityId.get(item.id)) }));
-  const visibleOpportunities = tab === "Deadline Soon" ? deadlineSoon : tab === "Applied" ? applied : saved;
+  const recordsForTab = applications.filter((record) => record.status === tab);
+  const recorded = allOpportunities
+    .filter((item) => recordsForTab.some((record) => record.opportunityId === item.id))
+    .map((item) => ({ ...item, saved: saved.some((savedItem) => savedItem.id === item.id) }));
+  const visibleOpportunities = tab === "Deadline Soon" ? deadlineSoon : ["APPLIED", "ARCHIVED"].includes(tab) ? recorded : saved;
+
+  async function toggleSave(id) {
+    const existing = saved.find((item) => item.id === id);
+    const opportunity = existing || allOpportunities.find((item) => item.id === id);
+    if (!opportunity) return;
+    const nextSaved = !existing;
+    setSaved((current) => nextSaved ? [...current, { ...opportunity, saved: true }] : current.filter((item) => item.id !== id));
+    try {
+      if (nextSaved) await savedApi.save(id);
+      else await savedApi.unsave(id);
+    } catch (err) {
+      setSaved((current) => nextSaved ? current.filter((item) => item.id !== id) : [...current, { ...opportunity, saved: true }]);
+      if (isApiStatus(err, 401)) { setAuthenticated(false); navigate("/login"); }
+      else setError(err.message || t("common.errorDescription"));
+    }
+  }
+
+  async function updateApplication(record, status) {
+    const previous = record.status;
+    setApplications((current) => current.map((item) => item.id === record.id ? { ...item, status } : item));
+    try { await applicationApi.update(record.id, { status, memo: record.memo || "" }); }
+    catch (err) {
+      setApplications((current) => current.map((item) => item.id === record.id ? { ...item, status: previous } : item));
+      setError(err.message || t("common.errorDescription"));
+    }
+  }
 
   return (
     <div className="page">
@@ -116,10 +138,12 @@ export default function SavedPage() {
         ) : (
           <OpportunityGrid
             opportunities={visibleOpportunities}
+            onToggleSave={toggleSave}
             emptyTitle={t("saved.emptyTitle")}
             emptyDescription={t("saved.emptyDescription")}
           />
         )}
+        {!loading && !requiresLogin && ["APPLIED", "ARCHIVED"].includes(tab) && recordsForTab.length ? <div className="application-status-controls">{recordsForTab.map((record) => <label className="field" key={record.id}><span className="field__label">{allOpportunities.find((item) => item.id === record.opportunityId)?.title || `#${record.opportunityId}`}</span><select className="field__input" value={record.status} onChange={(event) => updateApplication(record, event.target.value)}>{["INTERESTED", "PREPARING", "APPLIED", "ACCEPTED", "REJECTED", "ARCHIVED"].map((status) => <option key={status} value={status}>{labelStatus(status)}</option>)}</select></label>)}</div> : null}
       </section>
     </div>
   );

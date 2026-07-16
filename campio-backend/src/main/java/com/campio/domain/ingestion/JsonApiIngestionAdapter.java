@@ -13,6 +13,8 @@ import org.springframework.web.client.RestTemplate;
 @RequiredArgsConstructor
 public class JsonApiIngestionAdapter implements IngestionAdapter {
 
+  private static final int MAX_RESPONSE_CHARS = 2_000_000;
+
   private final RestTemplate ingestionRestTemplate;
   private final ObjectMapper objectMapper;
 
@@ -24,6 +26,9 @@ public class JsonApiIngestionAdapter implements IngestionAdapter {
   @Override
   public List<FetchedRawOpportunity> fetch(OpportunitySource source) {
     String body = ingestionRestTemplate.getForObject(source.getBaseUrl(), String.class);
+    if (body != null && body.length() > MAX_RESPONSE_CHARS) {
+      throw new BadRequestException("API source response is too large");
+    }
     try {
       JsonNode root = objectMapper.readTree(body == null ? "[]" : body);
       JsonNode items = findItems(root);

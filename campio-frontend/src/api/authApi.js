@@ -7,4 +7,6 @@ export const authApi = {
   logout: () => request("/api/auth/logout", { method: "POST" }),
   updateProfile: (body) => request("/api/users/profile", { method: "PATCH", body: JSON.stringify(body) }),
   updateInterests: (body) => request("/api/users/interests", { method: "PATCH", body: JSON.stringify(body) }),
+  requestSchoolVerification: (body) => request("/api/users/verify-school/request", { method: "POST", body: JSON.stringify(body) }),
+  verifySchool: (body) => request("/api/users/verify-school", { method: "POST", body: JSON.stringify(body) }),
 };

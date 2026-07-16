@@ -41,6 +41,8 @@ export default function AdminIngestionPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [runningSourceId, setRunningSourceId] = useState(null);
+  const [selectedRaw, setSelectedRaw] = useState(null);
+  const [publishForm, setPublishForm] = useState({ title: "", organization: "", category: "Internship", deadline: "", applyUrl: "" });
   const [requiresLogin, setRequiresLogin] = useState(false);
   const [error, setError] = useState("");
 
@@ -128,6 +130,62 @@ export default function AdminIngestionPage() {
       setError(err.message || "Failed to run crawl job");
     } finally {
       setRunningSourceId(null);
+    }
+  }
+
+  function beginRawReview(item) {
+    const source = sources.find((candidate) => candidate.id === item.sourceId);
+    setSelectedRaw(item);
+    setPublishForm({
+      title: item.rawTitle || "",
+      organization: source?.name || "",
+      category: source?.categoryHint || "Internship",
+      deadline: "",
+      applyUrl: item.sourceUrl || "",
+    });
+  }
+
+  async function publishRaw() {
+    if (!selectedRaw || !publishForm.title.trim() || !publishForm.category.trim() || !publishForm.deadline) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      await ingestionApi.publishRawOpportunity(selectedRaw.id, {
+        ...publishForm,
+        description: selectedRaw.rawContent || "",
+        deadline: publishForm.deadline,
+        requirements: null,
+        benefits: null,
+        target: null,
+        startDate: null,
+        endDate: null,
+        location: "Nationwide",
+        isOnline: false,
+        thumbnailUrl: null,
+        tags: [],
+        recommended: false,
+        newThisWeek: true,
+      });
+      setSelectedRaw(null);
+      await loadAll();
+    } catch (err) {
+      setError(err.message || "Failed to publish raw record");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function rejectRaw(item) {
+    setSubmitting(true);
+    setError("");
+    try {
+      await ingestionApi.updateRawStatus(item.id, { status: "REJECTED", normalizedOpportunityId: null, errorMessage: "Rejected by admin" });
+      if (selectedRaw?.id === item.id) setSelectedRaw(null);
+      await loadAll();
+    } catch (err) {
+      setError(err.message || "Failed to reject raw record");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -245,8 +303,27 @@ export default function AdminIngestionPage() {
                         <button type="button" className="button button--secondary" disabled={submitting} onClick={() => updateSource(source, { enabled: !source.enabled })}>
                           {source.enabled ? "Disable" : "Enable"}
                         </button>
-                        <button type="button" className="button button--primary" disabled={runningSourceId !== null} onClick={() => runSource(source.id)}>
+                        <button type="button" className="button button--primary" disabled={runningSourceId !== null || !source.enabled || !source.robotsAllowed} title={!source.enabled || !source.robotsAllowed ? "Enable the source and confirm robots permission first" : "Run source now"} onClick={() => runSource(source.id)}>
                           {runningSourceId === source.id ? "Running..." : "Run"}
+                        </button>
+                        <button
+                          type="button"
+                          className="button button--ghost"
+                          disabled={submitting || runningSourceId !== null}
+                          onClick={async () => {
+                            if (!window.confirm(`Delete source "${source.name}" and its raw/job history?`)) return;
+                            setSubmitting(true);
+                            try {
+                              await ingestionApi.deleteSource(source.id);
+                              await loadAll();
+                            } catch (err) {
+                              setError(err.message || "Failed to delete source");
+                            } finally {
+                              setSubmitting(false);
+                            }
+                          }}
+                        >
+                          Delete
                         </button>
                       </span>
                     </div>
@@ -284,6 +361,7 @@ export default function AdminIngestionPage() {
                     <span>Status</span>
                     <span>Source</span>
                     <span>Fetched</span>
+                    <span>Actions</span>
                   </div>
                   {rawItems.slice(0, 10).map((item) => (
                     <div className="admin-row" key={item.id}>
@@ -291,9 +369,27 @@ export default function AdminIngestionPage() {
                       <span>{item.status}</span>
                       <span>{item.sourceId}</span>
                       <span>{item.fetchedAt ? new Date(item.fetchedAt).toLocaleString() : "-"}</span>
+                      <span className="inline-actions">
+                        <button type="button" className="button button--secondary" onClick={() => beginRawReview(item)} disabled={item.status === "PUBLISHED"}>Review</button>
+                        <button type="button" className="button button--ghost" onClick={() => rejectRaw(item)} disabled={submitting || item.status === "PUBLISHED"}>Reject</button>
+                      </span>
                     </div>
                   ))}
                 </div>
+                {selectedRaw ? (
+                  <form className="raw-review-form form-grid" onSubmit={(event) => { event.preventDefault(); publishRaw(); }}>
+                    <h3>Review raw record #{selectedRaw.id}</h3>
+                    <Input label="Title" value={publishForm.title} onChange={(event) => setPublishForm((current) => ({ ...current, title: event.target.value }))} required />
+                    <Input label="Organization" value={publishForm.organization} onChange={(event) => setPublishForm((current) => ({ ...current, organization: event.target.value }))} />
+                    <Input label="Category" value={publishForm.category} onChange={(event) => setPublishForm((current) => ({ ...current, category: event.target.value }))} required />
+                    <Input label="Deadline" type="date" value={publishForm.deadline} onChange={(event) => setPublishForm((current) => ({ ...current, deadline: event.target.value }))} required />
+                    <Input label="Apply URL" type="url" value={publishForm.applyUrl} onChange={(event) => setPublishForm((current) => ({ ...current, applyUrl: event.target.value }))} />
+                    <div className="inline-actions">
+                      <Button type="submit" disabled={submitting}>Publish</Button>
+                      <Button type="button" variant="ghost" onClick={() => setSelectedRaw(null)}>Cancel</Button>
+                    </div>
+                  </form>
+                ) : null}
               </div>
             </section>
           </div>

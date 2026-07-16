@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { Bookmark, Compass, Home, LogIn, MessageCircle, User } from "lucide-react";
 import { AUTH_CHANGE_EVENT, isAuthenticated } from "../../app/authSession.js";
+import { authApi } from "../../api/authApi.js";
+import { setAuthenticated } from "../../app/authSession.js";
 import { useSettings } from "../../app/settings.jsx";
 import "./layout.css";
 
@@ -23,6 +25,26 @@ export default function MobileTabBar() {
     return () => {
       window.removeEventListener(AUTH_CHANGE_EVENT, handleAuthChange);
       window.removeEventListener("storage", handleAuthChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    authApi.me()
+      .then(() => {
+        if (active) {
+          setAuthenticated(true);
+          setAuthenticatedState(true);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setAuthenticated(false);
+          setAuthenticatedState(false);
+        }
+      });
+    return () => {
+      active = false;
     };
   }, []);
 

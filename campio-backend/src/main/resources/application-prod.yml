@@ -16,6 +16,7 @@ spring:
     console:
       enabled: false
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: none
     show-sql: false
@@ -27,6 +28,21 @@ spring:
   jackson:
     serialization:
       write-dates-as-timestamps: false
+  session:
+    store-type: jdbc
+    jdbc:
+      initialize-schema: never
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${SMTP_AUTH:true}
+          starttls:
+            enable: ${SMTP_STARTTLS:true}
 
 campio:
   frontend-origin: ${FRONTEND_ORIGIN}
@@ -35,6 +51,10 @@ campio:
     baseline-on-migrate: ${CAMPIO_FLYWAY_BASELINE_ON_MIGRATE:true}
   auth:
     allow-mock-user: false
+  school-verification:
+    expose-code: ${CAMPIO_SCHOOL_VERIFICATION_EXPOSE_CODE:false}
+    mail-enabled: ${CAMPIO_SCHOOL_VERIFICATION_MAIL_ENABLED:false}
+    mail-from: ${CAMPIO_SCHOOL_VERIFICATION_MAIL_FROM:no-reply@campio.local}
   admin:
     email: ${CAMPIO_ADMIN_EMAIL:}
     password: ${CAMPIO_ADMIN_PASSWORD:}
@@ -42,3 +62,5 @@ campio:
     bootstrap-sources-enabled: ${CAMPIO_INGESTION_BOOTSTRAP_SOURCES_ENABLED:false}
     auto-run-on-startup: ${CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP:false}
     auto-run-only-when-empty: ${CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY:true}
+    scheduler-enabled: ${CAMPIO_INGESTION_SCHEDULER_ENABLED:true}
+    scheduler-poll-ms: ${CAMPIO_INGESTION_SCHEDULER_POLL_MS:60000}

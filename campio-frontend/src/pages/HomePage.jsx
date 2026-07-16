@@ -1,126 +1,138 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { GraduationCap, Search, Users } from "lucide-react";
-import Card from "../components/common/Card.jsx";
+import { Bookmark, CalendarClock, Search, Sparkles, TrendingUp } from "lucide-react";
+import EmptyState from "../components/common/EmptyState.jsx";
+import LoadingSkeleton from "../components/common/LoadingSkeleton.jsx";
+import SectionHeader from "../components/common/SectionHeader.jsx";
+import FeaturedOpportunityCard from "../components/opportunity/FeaturedOpportunityCard.jsx";
+import OpportunityGrid from "../components/opportunity/OpportunityGrid.jsx";
+import { authApi } from "../api/authApi.js";
+import { opportunityApi } from "../api/opportunityApi.js";
+import { savedApi } from "../api/savedApi.js";
+import { isApiStatus } from "../api/client.js";
+import { setAuthenticated } from "../app/authSession.js";
 import { useSettings } from "../app/settings.jsx";
 import "./pages.css";
 
 export default function HomePage() {
-  const { language, labelCategory, t } = useSettings();
+  const { language, t } = useSettings();
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState("");
-  const categories = ["Internship", "Contest", "Scholarship", "Exchange", "Research"];
+  const [user, setUser] = useState(null);
+  const [data, setData] = useState({ recommended: [], closing: [], popular: [], all: [] });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [savingIds, setSavingIds] = useState([]);
+  const [query, setQuery] = useState("");
 
-  function handleSearchSubmit(event) {
-    event.preventDefault();
-    const query = searchQuery.trim();
-    navigate(query ? `/explore?q=${encodeURIComponent(query)}` : "/explore");
+  async function loadHome(active = () => true) {
+    setLoading(true);
+    setError("");
+    try {
+      const [recommended, closing, popular, all] = await Promise.all([
+        opportunityApi.recommended(),
+        opportunityApi.closingSoon(),
+        opportunityApi.popular(),
+        opportunityApi.list(),
+      ]);
+      let me = null;
+      try {
+        me = await authApi.me();
+        setAuthenticated(true);
+      } catch (authError) {
+        if (isApiStatus(authError, 401)) setAuthenticated(false);
+      }
+      if (active()) {
+        setUser(me);
+        setData({ recommended, closing: closing.slice(0, 4), popular: popular.slice(0, 4), all });
+      }
+    } catch (err) {
+      if (active()) setError(err.message || t("common.errorDescription"));
+    } finally {
+      if (active()) setLoading(false);
+    }
   }
 
-  const heroTitle =
-    language === "ko" ? (
-      <>
-        <span className="home-hero-line">
-          나에게 딱 맞는 <span className="home-hero-accent">커리어</span>를
-        </span>
-        <span className="home-hero-line">찾아보세요.</span>
-      </>
-    ) : (
-      <>
-        Find the <span className="home-hero-accent">career</span> that fits you.
-      </>
-    );
+  useEffect(() => {
+    let mounted = true;
+    loadHome(() => mounted);
+    return () => {
+      mounted = false;
+    };
+  }, [t]);
+
+  const newThisWeek = useMemo(() => {
+    const threshold = Date.now() - 7 * 86400000;
+    return data.all.filter((item) => item.newThisWeek || (item.createdAt && new Date(item.createdAt).getTime() >= threshold)).slice(0, 4);
+  }, [data.all]);
+
+  function updateSavedEverywhere(id, saved) {
+    setData((current) => Object.fromEntries(
+      Object.entries(current).map(([key, items]) => [key, items.map((item) => item.id === id ? { ...item, saved } : item)])
+    ));
+  }
+
+  async function toggleSave(id) {
+    if (savingIds.includes(id)) return;
+    const opportunity = data.all.find((item) => item.id === id)
+      || data.recommended.find((item) => item.id === id)
+      || data.closing.find((item) => item.id === id)
+      || data.popular.find((item) => item.id === id);
+    if (!opportunity) return;
+    const next = !opportunity.saved;
+    setSavingIds((current) => [...current, id]);
+    updateSavedEverywhere(id, next);
+    try {
+      if (next) await savedApi.save(id);
+      else await savedApi.unsave(id);
+    } catch (err) {
+      updateSavedEverywhere(id, !next);
+      if (isApiStatus(err, 401)) {
+        setAuthenticated(false);
+        navigate("/login");
+      } else {
+        setError(err.message || t("common.errorDescription"));
+      }
+    } finally {
+      setSavingIds((current) => current.filter((savedId) => savedId !== id));
+    }
+  }
+
+  if (loading) return <LoadingSkeleton count={5} />;
+  if (error && !data.all.length) {
+    return <EmptyState title={t("common.errorTitle")} description={error} actionLabel={t("common.retry")} onAction={() => loadHome()} />;
+  }
+
+  const greeting = user?.name
+    ? language === "ko" ? `${user.name}님, 다음 기회를 확인하세요.` : `Welcome back, ${user.name}.`
+    : language === "ko" ? "다음 기회를 발견하세요." : "Find your next opportunity.";
+  const savedCount = data.all.filter((item) => item.saved).length;
+  const featured = data.recommended[0];
 
   return (
-    <div className="page home-page">
-      <section className="home-site-hero">
-        <div className="home-site-hero__pattern" aria-hidden="true">
-          <svg viewBox="0 0 1440 720" role="presentation" focusable="false">
-            <defs>
-              <pattern id="home-grid" width="72" height="72" patternUnits="userSpaceOnUse">
-                <path d="M72 0H0V72" fill="none" stroke="#111111" strokeOpacity="0.035" strokeWidth="1" />
-              </pattern>
-            </defs>
-            <rect width="1440" height="720" fill="url(#home-grid)" />
-            <path
-              d="M-80 540C140 444 312 442 498 502C680 563 848 574 1050 500C1194 447 1308 386 1540 354"
-              fill="none"
-              stroke="#111111"
-              strokeOpacity="0.025"
-              strokeWidth="1.2"
-              strokeLinecap="round"
-            />
-            <path
-              d="M-100 208C94 124 284 120 448 170C640 230 812 244 1000 194C1158 150 1302 92 1520 92"
-              fill="none"
-              stroke="#111111"
-              strokeOpacity="0.02"
-              strokeWidth="1.2"
-              strokeLinecap="round"
-            />
-          </svg>
-        </div>
+    <div className="page home-dashboard stack">
+      <header className="home-dashboard__header">
+        <div><p className="page-kicker">{t("home.kicker")}</p><h1>{greeting}</h1></div>
+        <form onSubmit={(event) => { event.preventDefault(); navigate(query.trim() ? `/explore?q=${encodeURIComponent(query.trim())}` : "/explore"); }} role="search" className="home-dashboard__search">
+          <Search size={18} aria-hidden="true" />
+          <input aria-label={t("filters.search")} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("home.searchPlaceholder")} />
+        </form>
+      </header>
 
-        <div className="home-section-shell home-site-hero__inner">
-          <div className="home-site-hero__copy home-site-hero__copy--center">
-            <p className="page-kicker">{t("home.kicker")}</p>
-            <h1>{heroTitle}</h1>
-            <p>{t("home.heroCopy")}</p>
-            <form className="home-search-card home-search-card--center" onSubmit={handleSearchSubmit} role="search">
-              <Search size={19} aria-hidden="true" />
-              <input
-                aria-label={t("filters.search")}
-                placeholder={t("home.searchPlaceholder")}
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-              />
-            </form>
-            <div className="home-category-strip home-category-strip--center" aria-label={t("home.categories")}>
-              {categories.map((category) => (
-                <button
-                  type="button"
-                  className="home-category-chip"
-                  key={category}
-                  onClick={() => navigate(`/explore?category=${encodeURIComponent(category)}`)}
-                >
-                  {labelCategory(category)}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+      <section className="home-metrics" aria-label={t("home.metricsTitle")}>
+        <div><CalendarClock aria-hidden="true" /><span>{language === "ko" ? "14일 내 마감" : "Due in 14 days"}</span><strong>{data.closing.filter((item) => item.deadline && new Date(item.deadline) - new Date() <= 14 * 86400000).length}</strong></div>
+        <div><Sparkles aria-hidden="true" /><span>{language === "ko" ? "맞춤 추천" : "Recommended"}</span><strong>{data.recommended.length}</strong></div>
+        <div><TrendingUp aria-hidden="true" /><span>{language === "ko" ? "이번 주 신규" : "New this week"}</span><strong>{newThisWeek.length}</strong></div>
+        <div><Bookmark aria-hidden="true" /><span>{language === "ko" ? "저장한 기회" : "Saved"}</span><strong>{savedCount}</strong></div>
       </section>
 
-      <section className="home-feature-cards">
-        <div className="home-section-shell">
-          <div className="home-feature-cards__grid">
-            <Card className="home-feature-card">
-              <div className="home-feature-card__icon"><Search size={22} aria-hidden="true" /></div>
-              <h2>{language === "ko" ? "기회 탐색" : "Opportunity Search"}</h2>
-              <p>{language === "ko" ? "인턴십, 공모전, 장학금 정보를 한곳에서 간결하게 확인하세요." : "Browse internships, contests, scholarships, and career programs in one focused place."}</p>
-            </Card>
-            <Card className="home-feature-card">
-              <div className="home-feature-card__icon"><Users size={22} aria-hidden="true" /></div>
-              <h2>{language === "ko" ? "커뮤니티" : "Community"}</h2>
-              <p>{language === "ko" ? "다양한 사람들과 정보와 커리어를 공유하고 소통해 보세요." : "Ask questions, compare experiences, and make better application decisions."}</p>
-            </Card>
-            <Card className="home-feature-card">
-              <div className="home-feature-card__icon"><GraduationCap size={22} aria-hidden="true" /></div>
-              <h2>{language === "ko" ? "멘토링" : "Mentoring"}</h2>
-              <p>{language === "ko" ? "현업 전문가와 멘토들에게 직접 피드백을 받고 성장하세요." : "Connect opportunities with guidance from people who understand the process."}</p>
-            </Card>
-          </div>
-        </div>
-      </section>
+      {featured ? (
+        <section><SectionHeader title={language === "ko" ? "추천 기회" : "Recommended for you"} actionLabel={t("saved.explore")} actionTo="/explore" /><FeaturedOpportunityCard opportunity={featured} reason={language === "ko" ? "관심사와 활동 분야를 반영했어요" : "Based on your interests"} ctaLabel={t("card.viewDetails")} onToggleSave={toggleSave} /></section>
+      ) : <EmptyState title={language === "ko" ? "추천을 준비 중이에요." : "No recommendations yet."} description={language === "ko" ? "관심사를 추가하면 맞춤 기회를 보여드려요." : "Add interests to improve your feed."} actionLabel={t("common.goLogin")} actionTo={user ? "/profile" : "/login"} />}
 
-      <section className="home-cta">
-        <div className="home-section-shell home-cta__inner">
-          <p>{t("home.homeCtaCopy")}</p>
-          <button type="button" className="button button--primary" onClick={() => navigate("/explore")}>
-            {t("home.homeCtaAction")}
-          </button>
-        </div>
-      </section>
+      <section className="page-section"><SectionHeader title={language === "ko" ? "마감 임박" : "Closing soon"} actionLabel={t("saved.explore")} actionTo="/explore?deadline=soon" /><OpportunityGrid opportunities={data.closing} onToggleSave={toggleSave} variant="urgent" /></section>
+      <section className="page-section"><SectionHeader title={language === "ko" ? "인기 기회" : "Popular opportunities"} actionLabel={t("saved.explore")} actionTo="/explore?sort=popular" /><OpportunityGrid opportunities={data.popular} onToggleSave={toggleSave} /></section>
+      <section className="page-section"><SectionHeader title={language === "ko" ? "이번 주 새 기회" : "New this week"} /><OpportunityGrid opportunities={newThisWeek} onToggleSave={toggleSave} /></section>
+      {error ? <p className="form-error" role="alert">{error}</p> : null}
     </div>
   );
 }

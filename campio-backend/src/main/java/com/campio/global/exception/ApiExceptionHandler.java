@@ -11,7 +11,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
@@ -33,6 +35,11 @@ public class ApiExceptionHandler {
   @ExceptionHandler(UnauthorizedException.class)
   public ResponseEntity<Map<String, Object>> handleUnauthorized(UnauthorizedException ex) {
     return response(HttpStatus.UNAUTHORIZED, ex.getMessage());
+  }
+
+  @ExceptionHandler(TooManyRequestsException.class)
+  public ResponseEntity<Map<String, Object>> handleTooManyRequests(TooManyRequestsException ex) {
+    return response(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -62,7 +69,8 @@ public class ApiExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex) {
-    return response(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+    log.error("Unhandled API exception", ex);
+    return response(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");
   }
 
   private ResponseEntity<Map<String, Object>> response(HttpStatus status, String message) {

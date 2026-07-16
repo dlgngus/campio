@@ -3,6 +3,7 @@ package com.campio.domain.opportunity;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import javax.servlet.http.HttpSession;
+import javax.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,37 +23,38 @@ public class OpportunityController {
   private final OpportunityService opportunityService;
 
   @GetMapping
-  public List<OpportunityResponse> list() {
-    return opportunityService.listAll();
+  public List<OpportunityResponse> list(HttpSession session) {
+    return opportunityService.listAll(session);
   }
 
   @GetMapping("/recommended")
-  public List<OpportunityResponse> recommended() {
-    return opportunityService.recommended();
+  public List<OpportunityResponse> recommended(HttpSession session) {
+    return opportunityService.recommended(session);
   }
 
   @GetMapping("/closing-soon")
-  public List<OpportunityResponse> closingSoon() {
-    return opportunityService.closingSoon();
+  public List<OpportunityResponse> closingSoon(HttpSession session) {
+    return opportunityService.closingSoon(session);
   }
 
   @GetMapping("/popular")
-  public List<OpportunityResponse> popular() {
-    return opportunityService.popular();
+  public List<OpportunityResponse> popular(HttpSession session) {
+    return opportunityService.popular(session);
   }
 
   @GetMapping("/{id}")
-  public OpportunityResponse detail(@PathVariable Long id) {
-    return opportunityService.detail(id);
+  public OpportunityResponse detail(@PathVariable Long id, HttpSession session) {
+    return opportunityService.detail(id, session);
   }
 
   @PostMapping
-  public OpportunityResponse create(@RequestBody OpportunityRequest request, HttpSession session) {
+  public OpportunityResponse create(@Valid @RequestBody OpportunityRequest request, HttpSession session) {
     return opportunityService.create(request, session);
   }
 
   @PatchMapping("/{id}")
-  public OpportunityResponse update(@PathVariable Long id, @RequestBody OpportunityRequest request, HttpSession session) {
+  public OpportunityResponse update(
+      @PathVariable Long id, @Valid @RequestBody OpportunityRequest request, HttpSession session) {
     return opportunityService.update(id, request, session);
   }
 

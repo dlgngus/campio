@@ -46,6 +46,7 @@ import org.springframework.web.client.RestTemplate;
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
     "campio.auth.allow-mock-user=false",
+    "campio.ingestion.allow-unresolved-hosts=true",
     "campio.admin.email=admin@campio.local",
     "campio.admin.password=password"
 })
@@ -673,6 +674,75 @@ class CampioApiSmokeTest {
         .andExpect(jsonPath("$.status").value("OPEN"));
   }
 
+  @Test
+  void communitySavesExposeRealCountsAndCurrentUserState() throws Exception {
+    MockHttpSession studentSession = login("ryan@campus.edu", "password");
+    MvcResult created = mockMvc.perform(
+            post("/api/posts").session(studentSession).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"type\":\"QUESTION\",\"title\":\"Saved post contract\",\"content\":\"Save me\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.authorName").value("Ryan"))
+        .andExpect(jsonPath("$.own").value(true))
+        .andReturn();
+    long postId = readId(created);
+
+    mockMvc.perform(post("/api/posts/" + postId + "/save").session(studentSession))
+        .andExpect(status().isNoContent());
+    mockMvc.perform(get("/api/posts/" + postId).session(studentSession))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.saved").value(true))
+        .andExpect(jsonPath("$.savedCount").value(1));
+    mockMvc.perform(delete("/api/posts/" + postId + "/save").session(studentSession))
+        .andExpect(status().isNoContent());
+  }
+
+  @Test
+  void adminCanApproveMentorAndMentorCanAnswerQuestions() throws Exception {
+    MockHttpSession studentSession = login("ryan@campus.edu", "password");
+    MvcResult application = mockMvc.perform(
+            post("/api/mentors/apply").session(studentSession).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"company\":\"Campio\",\"position\":\"Mentor\",\"experience\":\"Review\",\"helpTopics\":[\"Resume\"]}"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.available").value(false)).andReturn();
+    long mentorId = readId(application);
+
+    MockHttpSession adminSession = login("admin@campio.local", "password");
+    mockMvc.perform(patch("/api/admin/mentors/" + mentorId).session(adminSession)
+            .contentType(MediaType.APPLICATION_JSON).content("{\"available\":true}"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.available").value(true));
+
+    MvcResult question = mockMvc.perform(post("/api/mentors/" + mentorId + "/questions")
+            .session(studentSession).contentType(MediaType.APPLICATION_JSON)
+            .content("{\"content\":\"How should I prepare?\"}"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("OPEN")).andReturn();
+    long questionId = readId(question);
+    mockMvc.perform(patch("/api/mentors/questions/" + questionId + "/answer")
+            .session(studentSession).contentType(MediaType.APPLICATION_JSON)
+            .content("{\"answer\":\"Start with the eligibility checklist.\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("ANSWERED"))
+        .andExpect(jsonPath("$.answer").value("Start with the eligibility checklist."));
+  }
+
+  @Test
+  void schoolVerificationUsesExpiringChallengeAndMutationOriginIsChecked() throws Exception {
+    MockHttpSession studentSession = login("ryan@campus.edu", "password");
+    MvcResult challenge = mockMvc.perform(post("/api/users/verify-school/request")
+            .session(studentSession).contentType(MediaType.APPLICATION_JSON)
+            .content("{\"schoolEmail\":\"ryan@campus.edu\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.expiresInSeconds").value(600))
+        .andExpect(jsonPath("$.developmentCode", notNullValue()))
+        .andReturn();
+    String code = objectMapper.readTree(challenge.getResponse().getContentAsString()).get("developmentCode").asText();
+    mockMvc.perform(post("/api/users/verify-school").session(studentSession)
+            .contentType(MediaType.APPLICATION_JSON).content("{\"code\":\"" + code + "\"}"))
+        .andExpect(status().isOk()).andExpect(jsonPath("$.verified").value(true));
+
+    mockMvc.perform(post("/api/opportunities/1/save").session(studentSession)
+            .header("Origin", "https://attacker.example"))
+        .andExpect(status().isForbidden());
+  }
+
   private MockHttpSession login(String email, String password) throws Exception {
     MvcResult result =
         mockMvc.perform(
@@ -749,6 +819,11 @@ class CampioApiSmokeTest {
 
   private void ensureMentor() {
     if (mentorProfileRepository.count() > 0) {
+      mentorProfileRepository.findAll().forEach(mentor -> {
+        mentor.setAvailable(true);
+        mentor.setUpdatedAt(LocalDateTime.now());
+        mentorProfileRepository.save(mentor);
+      });
       return;
     }
     User user = ensureUser("ryan@campus.edu", "Ryan", "STUDENT");

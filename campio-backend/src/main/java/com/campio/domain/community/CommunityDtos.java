@@ -1,6 +1,7 @@
 package com.campio.domain.community;
 
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,8 +15,10 @@ class CommunityPostRequest {
   private Long opportunityId;
   private String type;
   @NotBlank
+  @Size(max = 200)
   private String title;
   @NotBlank
+  @Size(max = 10000)
   private String content;
 }
 
@@ -24,6 +27,7 @@ class CommunityPostRequest {
 @NoArgsConstructor
 class CommentRequest {
   @NotBlank
+  @Size(max = 3000)
   private String content;
 }
 
@@ -39,6 +43,10 @@ class CommunityPostResponse {
   private String title;
   private String content;
   private String relatedOpportunityTitle;
+  private String authorName;
+  private String authorAvatarUrl;
+  private boolean own;
+  private boolean saved;
   private int commentCount;
   private int savedCount;
   private String createdAt;
@@ -52,7 +60,9 @@ class CommunityPostResponse {
 class CommentResponse {
   private Long id;
   private Long postId;
+  private String authorName;
+  private String authorAvatarUrl;
+  private boolean own;
   private String content;
   private String createdAt;
 }
-

@@ -3,6 +3,7 @@ import { normalizeOpportunity, normalizeOpportunityList } from "./transformers.j
 
 export const opportunityApi = {
   list: async () => normalizeOpportunityList(await request("/api/opportunities")),
+  adminList: async () => normalizeOpportunityList(await request("/api/admin/opportunities")),
   recommended: async () => normalizeOpportunityList(await request("/api/opportunities/recommended")),
   closingSoon: async () => normalizeOpportunityList(await request("/api/opportunities/closing-soon")),
   popular: async () => normalizeOpportunityList(await request("/api/opportunities/popular")),

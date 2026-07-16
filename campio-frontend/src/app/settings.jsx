@@ -28,12 +28,16 @@ const copy = {
     "home.categories": "Browse by category",
     "home.summaryTitle": "Today's summary",
     "home.metricsTitle": "At a glance",
+    "home.featuredSection": "Top match",
+    "home.matchLabel": "match",
+    "home.featuredNote": "Recommendation strength is based on your profile and interests.",
     "home.homeCtaCopy": "Use the navigation above or start exploring opportunities now.",
     "home.homeCtaAction": "Explore now",
     "explore.matches": "matches",
     "explore.title": "Explore opportunities.",
     "filters.search": "Search",
     "filters.placeholder": "Title, organization, category, location, tag",
+    "filters.targetPlaceholder": "Major, grade, or eligibility keyword",
     "filters.category": "Category",
     "filters.region": "Region",
     "filters.sort": "Sort",
@@ -49,6 +53,7 @@ const copy = {
     "sort.deadline": "Deadline",
     "sort.latest": "Newest",
     "sort.title": "Title",
+    "sort.popular": "Most saved",
     "detail.notFoundTitle": "Opportunity not found.",
     "detail.notFoundDescription": "Return to Explore and choose another opportunity.",
     "detail.apply": "Apply Now",
@@ -163,12 +168,16 @@ const copy = {
     "home.categories": "카테고리별 탐색",
     "home.summaryTitle": "오늘의 요약",
     "home.metricsTitle": "한눈에 보기",
+    "home.featuredSection": "가장 잘 맞는 기회",
+    "home.matchLabel": "일치",
+    "home.featuredNote": "프로필과 관심사를 기준으로 추천 적합도를 계산했어요.",
     "home.homeCtaCopy": "원하는 메뉴를 상단 탭에서 선택하거나, 지금 바로 커리어를 탐색해 보세요!",
     "home.homeCtaAction": "지금 탐색하러 가기",
     "explore.matches": "개 결과",
     "explore.title": "기회를 탐색하세요.",
     "filters.search": "검색",
     "filters.placeholder": "제목, 기관, 카테고리, 지역, 태그",
+    "filters.targetPlaceholder": "전공, 학년, 지원 대상 키워드",
     "filters.category": "카테고리",
     "filters.region": "지역",
     "filters.sort": "정렬",
@@ -184,6 +193,7 @@ const copy = {
     "sort.deadline": "마감일순",
     "sort.latest": "최신순",
     "sort.title": "제목순",
+    "sort.popular": "인기순",
     "detail.notFoundTitle": "기회를 찾을 수 없어요.",
     "detail.notFoundDescription": "탐색 화면에서 다른 기회를 선택해 주세요.",
     "detail.apply": "지원하기",
@@ -306,8 +316,21 @@ const statusLabels = {
     Preparing: "준비 중",
     Accepted: "합격",
     Rejected: "불합격",
+    INTERESTED: "관심 있음",
+    PREPARING: "준비 중",
+    APPLIED: "지원 완료",
+    ACCEPTED: "합격",
+    REJECTED: "불합격",
+    ARCHIVED: "보관함",
   },
-  en: {},
+  en: {
+    INTERESTED: "Interested",
+    PREPARING: "Preparing",
+    APPLIED: "Applied",
+    ACCEPTED: "Accepted",
+    REJECTED: "Rejected",
+    ARCHIVED: "Archived",
+  },
 };
 
 const locationLabels = {
@@ -328,7 +351,10 @@ function readStoredValue(key, fallback) {
 
 export function SettingsProvider({ children }) {
   const [language, setLanguage] = useState(() => readStoredValue("campio-language", "ko"));
-  const [theme, setTheme] = useState(() => readStoredValue("campio-theme", "light"));
+  const [theme, setTheme] = useState(() => readStoredValue(
+    "campio-theme",
+    typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+  ));
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;

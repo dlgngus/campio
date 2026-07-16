@@ -2,6 +2,7 @@ package com.campio.domain.saved;
 
 import com.campio.domain.opportunity.OpportunityResponse;
 import com.campio.domain.opportunity.OpportunityService;
+import com.campio.domain.opportunity.OpportunityRepository;
 import com.campio.domain.user.UserService;
 import com.campio.global.exception.NotFoundException;
 import java.time.LocalDateTime;
@@ -19,26 +20,30 @@ public class SavedOpportunityService {
   private final SavedOpportunityRepository savedOpportunityRepository;
   private final UserService userService;
   private final OpportunityService opportunityService;
+  private final OpportunityRepository opportunityRepository;
 
   @Transactional(readOnly = true)
   public List<OpportunityResponse> list(HttpSession session) {
     long userId = userService.currentUserId(session);
-    return savedOpportunityRepository.findByUserId(userId).stream()
-        .map(saved -> opportunityService.detail(saved.getOpportunityId()))
-        .collect(Collectors.toList());
+    List<Long> opportunityIds = savedOpportunityRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+        .map(SavedOpportunity::getOpportunityId).collect(Collectors.toList());
+    return opportunityService.savedByIds(opportunityIds, session);
   }
 
   @Transactional
   public SaveResponse save(Long opportunityId, HttpSession session) {
     long userId = userService.currentUserId(session);
-    savedOpportunityRepository.findByUserIdAndOpportunityId(userId, opportunityId)
-        .orElseGet(() -> {
+    if (!opportunityRepository.existsById(opportunityId)) {
+      throw new NotFoundException("Opportunity not found");
+    }
+    if (savedOpportunityRepository.findByUserIdAndOpportunityId(userId, opportunityId).isEmpty()) {
           SavedOpportunity saved = new SavedOpportunity();
           saved.setUserId(userId);
           saved.setOpportunityId(opportunityId);
           saved.setCreatedAt(LocalDateTime.now());
-          return savedOpportunityRepository.save(saved);
-        });
+          savedOpportunityRepository.save(saved);
+          opportunityRepository.incrementPopularity(opportunityId);
+    }
     return new SaveResponse(true);
   }
 
@@ -48,6 +53,7 @@ public class SavedOpportunityService {
     SavedOpportunity saved = savedOpportunityRepository.findByUserIdAndOpportunityId(userId, opportunityId)
         .orElseThrow(() -> new NotFoundException("Saved opportunity not found"));
     savedOpportunityRepository.delete(saved);
+    opportunityRepository.decrementPopularity(opportunityId);
     return new SaveResponse(false);
   }
 }

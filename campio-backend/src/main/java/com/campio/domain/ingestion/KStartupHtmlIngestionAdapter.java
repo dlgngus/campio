@@ -2,16 +2,10 @@ package com.campio.domain.ingestion;
 
 import com.campio.global.exception.BadRequestException;
 import com.campio.domain.opportunity.StudentOpportunityPolicy;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
+import java.net.URI;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -19,10 +13,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -37,6 +27,7 @@ import org.springframework.web.client.RestTemplate;
 public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
 
   private static final int MAX_PAGES = 20;
+  private static final int MAX_RESPONSE_CHARS = 2_000_000;
   private static final Pattern LISTING_PATTERN = Pattern.compile(
       "([가-힣A-Za-z0-9ㆍ·&/()\\[\\].,'\\-\\s]+?)\\s+D-\\d+\\s+(.+?)\\s+새로운게시글\\s+(.+?)\\s+등록일자\\s+(\\d{4}-\\d{2}-\\d{2})\\s+시작일자\\s+(\\d{4}-\\d{2}-\\d{2})\\s+마감일자\\s+(\\d{4}-\\d{2}-\\d{2})\\s+조회",
       Pattern.DOTALL);
@@ -125,12 +116,13 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
           HttpMethod.GET,
           new HttpEntity<>(headers),
           String.class);
-      return response.getBody();
-    } catch (ResourceAccessException ex) {
-      if (!url.contains("k-startup.go.kr")) {
-        throw ex;
+      String body = response.getBody();
+      if (body != null && body.length() > MAX_RESPONSE_CHARS) {
+        throw new BadRequestException("HTML source response is too large");
       }
-      return fetchKStartupWithLocalTrustFallback(url);
+      return body;
+    } catch (ResourceAccessException ex) {
+      throw new BadRequestException("Failed to fetch approved HTML source");
     }
   }
 
@@ -411,7 +403,16 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
   }
 
   private boolean isSupportedHtmlSource(String baseUrl) {
-    return baseUrl != null && (baseUrl.contains("k-startup.go.kr") || baseUrl.contains("bizinfo.go.kr"));
+    if (baseUrl == null) return false;
+    try {
+      String host = URI.create(baseUrl).getHost();
+      return "www.k-startup.go.kr".equalsIgnoreCase(host)
+          || "k-startup.go.kr".equalsIgnoreCase(host)
+          || "www.bizinfo.go.kr".equalsIgnoreCase(host)
+          || "bizinfo.go.kr".equalsIgnoreCase(host);
+    } catch (IllegalArgumentException ex) {
+      return false;
+    }
   }
 
   private String absolutizeBizInfoUrl(String detailPath) {
@@ -419,52 +420,6 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
       return detailPath;
     }
     return "https://www.bizinfo.go.kr" + (detailPath.startsWith("/") ? detailPath : "/" + detailPath);
-  }
-
-  private String fetchKStartupWithLocalTrustFallback(String url) {
-    try {
-      HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
-      if (connection instanceof HttpsURLConnection) {
-        ((HttpsURLConnection) connection).setSSLSocketFactory(kStartupSslContext().getSocketFactory());
-      }
-      connection.setRequestProperty(HttpHeaders.USER_AGENT, "Mozilla/5.0 CampioBot/1.0 (+https://campio.local)");
-      connection.setRequestProperty(HttpHeaders.ACCEPT, "text/html,application/xhtml+xml");
-      connection.setRequestProperty(HttpHeaders.ACCEPT_LANGUAGE, "ko-KR,ko;q=0.9,en;q=0.8");
-      connection.setConnectTimeout(10000);
-      connection.setReadTimeout(15000);
-      try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
-        StringBuilder builder = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-          builder.append(line).append('\n');
-        }
-        return builder.toString();
-      }
-    } catch (IOException | GeneralSecurityException ex) {
-      throw new BadRequestException("Failed to fetch approved K-Startup source");
-    }
-  }
-
-  private SSLContext kStartupSslContext() throws GeneralSecurityException {
-    TrustManager[] trustManagers = new TrustManager[] {
-        new X509TrustManager() {
-          @Override
-          public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) {
-          }
-
-          @Override
-          public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) {
-          }
-
-          @Override
-          public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-            return new java.security.cert.X509Certificate[0];
-          }
-        }
-    };
-    SSLContext context = SSLContext.getInstance("TLS");
-    context.init(null, trustManagers, new SecureRandom());
-    return context;
   }
 
   private String firstNonBlank(String preferred, String fallback) {

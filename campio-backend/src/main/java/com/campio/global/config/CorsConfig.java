@@ -9,6 +9,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
 
+  private final ApiSecurityInterceptor apiSecurityInterceptor;
+
+  public CorsConfig(ApiSecurityInterceptor apiSecurityInterceptor) {
+    this.apiSecurityInterceptor = apiSecurityInterceptor;
+  }
+
   @Value("${campio.frontend-origin:http://localhost:5173}")
   private String frontendOrigin;
 
@@ -23,5 +29,10 @@ public class CorsConfig implements WebMvcConfigurer {
         .allowedMethods("GET", "POST", "PATCH", "DELETE", "PUT", "OPTIONS")
         .allowedHeaders("*")
         .allowCredentials(true);
+  }
+
+  @Override
+  public void addInterceptors(org.springframework.web.servlet.config.annotation.InterceptorRegistry registry) {
+    registry.addInterceptor(apiSecurityInterceptor).addPathPatterns("/api/**");
   }
 }

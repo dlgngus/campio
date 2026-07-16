@@ -35,6 +35,10 @@ public final class StudentOpportunityPolicy {
       "캠프",
       "부트캠프");
 
+  private static final List<String> STUDENT_CATEGORIES = List.of(
+      "internship", "contest", "competition", "external activity", "scholarship", "exchange",
+      "research", "startup", "seminar", "mentoring", "campus event", "full-time job");
+
   private StudentOpportunityPolicy() {}
 
   public static boolean isStudentRelevant(
@@ -49,6 +53,20 @@ public final class StudentOpportunityPolicy {
         safe(title),
         safe(organization),
         safe(category),
+        safe(description),
+        safe(target),
+        tags == null ? "" : String.join(" ", tags));
+    String normalizedCategory = safe(category).trim().toLowerCase();
+    return STUDENT_CATEGORIES.contains(normalizedCategory)
+        || STUDENT_RELEVANT_KEYWORDS.stream().anyMatch(haystack::contains);
+  }
+
+  public static boolean hasStudentAudienceSignal(
+      String title, String organization, String description, String target, List<String> tags) {
+    String haystack = String.join(
+        " ",
+        safe(title),
+        safe(organization),
         safe(description),
         safe(target),
         tags == null ? "" : String.join(" ", tags));

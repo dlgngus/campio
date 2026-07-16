@@ -113,6 +113,16 @@ export default function OpportunityDetailPage() {
   const fallback = t("detail.sourceFallback");
   const displayPeriod = [opportunity.startDate, opportunity.endDate].filter(Boolean).join(" - ") || fallback;
 
+  function openApplyUrl() {
+    try {
+      const url = new URL(opportunity.applyUrl);
+      if (!["http:", "https:"].includes(url.protocol)) throw new Error("Unsupported protocol");
+      window.open(url.toString(), "_blank", "noopener,noreferrer");
+    } catch {
+      setError(t("detail.sourceFallback"));
+    }
+  }
+
   async function handleStatusChange(nextStatus) {
     if (recordSaving || nextStatus === status) return;
     const previousStatus = status;
@@ -154,7 +164,7 @@ export default function OpportunityDetailPage() {
           </div>
         </div>
         <div className="detail-actions">
-          <Button icon={ExternalLink} onClick={() => window.open(opportunity.applyUrl, "_blank")}>
+          <Button icon={ExternalLink} onClick={openApplyUrl} disabled={!opportunity.applyUrl}>
             {t("detail.apply")}
           </Button>
           <Button

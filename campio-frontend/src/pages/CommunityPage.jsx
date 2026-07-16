@@ -21,6 +21,23 @@ export default function CommunityPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  async function toggleSave(id) {
+    const target = posts.find((post) => post.id === id);
+    if (!target) return;
+    const saved = !target.saved;
+    setPosts((current) => current.map((post) => post.id === id ? { ...post, saved, savedCount: Math.max(0, post.savedCount + (saved ? 1 : -1)) } : post));
+    try {
+      if (saved) await communityApi.savePost(id);
+      else await communityApi.unsavePost(id);
+    } catch (err) {
+      setPosts((current) => current.map((post) => post.id === id ? target : post));
+      if (isApiStatus(err, 401)) {
+        setAuthenticated(false);
+        navigate("/login");
+      } else setError(err.message || t("common.errorDescription"));
+    }
+  }
+
   async function loadPosts(shouldUpdate = () => true) {
     setLoading(true);
     setError("");
@@ -113,7 +130,7 @@ export default function CommunityPage() {
         ) : (
           <div className="simple-grid">
             {posts.map((post) => (
-              <PostCard key={post.id} post={post} />
+              <PostCard key={post.id} post={post} onToggleSave={toggleSave} />
             ))}
           </div>
         )}
