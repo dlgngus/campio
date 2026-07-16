@@ -27,6 +27,8 @@ services:
         value: "false"
       - key: CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY
         value: "true"
+      - key: CAMPIO_INGESTION_SCHEDULER_ENABLED
+        value: "false"
 
 databases:
   - name: campio-postgres

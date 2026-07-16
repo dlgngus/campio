@@ -64,5 +64,5 @@ campio:
     bootstrap-sources-enabled: ${CAMPIO_INGESTION_BOOTSTRAP_SOURCES_ENABLED:false}
     auto-run-on-startup: ${CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP:false}
     auto-run-only-when-empty: ${CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY:true}
-    scheduler-enabled: ${CAMPIO_INGESTION_SCHEDULER_ENABLED:true}
+    scheduler-enabled: ${CAMPIO_INGESTION_SCHEDULER_ENABLED:false}
     scheduler-poll-ms: ${CAMPIO_INGESTION_SCHEDULER_POLL_MS:60000}
