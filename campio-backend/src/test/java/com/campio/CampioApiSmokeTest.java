@@ -89,7 +89,7 @@ class CampioApiSmokeTest {
   }
 
   @Test
-  void publicOpportunityCommunityAndMentorApisReturnStoredData() throws Exception {
+  void publicOpportunityAndCommunityApisReturnStoredDataAndMentorsRequireVerification() throws Exception {
     mockMvc.perform(get("/api/health"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("ok"));
@@ -108,8 +108,42 @@ class CampioApiSmokeTest {
         .andExpect(jsonPath("$.length()", greaterThanOrEqualTo(1)));
 
     mockMvc.perform(get("/api/mentors"))
+        .andExpect(status().isUnauthorized());
+
+    MockHttpSession verifiedStudent = login("ryan@campus.edu", "password");
+    mockMvc.perform(get("/api/mentors").session(verifiedStudent))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()", greaterThanOrEqualTo(1)));
+  }
+
+  @Test
+  void opportunitySearchIsPagedAndAppliesDatabaseFilters() throws Exception {
+    mockMvc.perform(get("/api/opportunities/search")
+            .param("page", "0")
+            .param("size", "1")
+            .param("category", "Internship")
+            .param("online", "true")
+            .param("sort", "latest"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.size").value(1))
+        .andExpect(jsonPath("$.content.length()").value(1))
+        .andExpect(jsonPath("$.totalElements", greaterThanOrEqualTo(1)))
+        .andExpect(jsonPath("$.content[0].category").value("Internship"));
+  }
+
+  @Test
+  void unverifiedStudentCannotUseMentorService() throws Exception {
+    User student = userRepository.findByEmail("ryan@campus.edu").orElseThrow();
+    student.setVerified(false);
+    userRepository.save(student);
+    MockHttpSession session = login("ryan@campus.edu", "password");
+
+    mockMvc.perform(get("/api/mentors").session(session))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.message").value("School verification is required"));
+
+    student.setVerified(true);
+    userRepository.save(student);
   }
 
   @Test

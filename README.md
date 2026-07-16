@@ -150,7 +150,15 @@ CAMPIO_ADMIN_EMAIL=...
 CAMPIO_ADMIN_PASSWORD=...
 CAMPIO_INGESTION_BOOTSTRAP_SOURCES_ENABLED=false
 CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP=false
+CAMPIO_INGESTION_SCHEDULER_ENABLED=true
+CAMPIO_YOUTH_CENTER_API_KEY=...
+CAMPIO_WORK24_API_KEY=...
 ```
+
+`CAMPIO_YOUTH_CENTER_API_KEY` and `CAMPIO_WORK24_API_KEY` are optional. When configured,
+Campio registers the official Ontong Youth policy API and Work24 internship API sources.
+Set `CAMPIO_INGESTION_BOOTSTRAP_SOURCES_ENABLED=true` to enable registered sources and
+`CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP=true` for the first import.
 
 Full beginner-friendly deployment guide:
 
@@ -176,4 +184,3 @@ Current backend test suite covers:
 ## Notes
 
 Campio is actively evolving. The current focus is improving source quality for crawled opportunities so that students see relevant, regional, and actionable opportunities instead of broad generic government support listings.
-

@@ -8,6 +8,7 @@ import LoadingSkeleton from "../components/common/LoadingSkeleton.jsx";
 import EmptyState from "../components/common/EmptyState.jsx";
 import MentorCard from "../components/mentor/MentorCard.jsx";
 import { mentorApi } from "../api/mentorApi.js";
+import { authApi } from "../api/authApi.js";
 import { useSettings } from "../app/settings.jsx";
 import { isApiStatus } from "../api/client.js";
 import { setAuthenticated } from "../app/authSession.js";
@@ -23,15 +24,32 @@ export default function MentorsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [applyForm, setApplyForm] = useState({ company: "", position: "", experience: "", helpTopics: "" });
   const [applicationMessage, setApplicationMessage] = useState("");
+  const [requiresLogin, setRequiresLogin] = useState(false);
+  const [requiresVerification, setRequiresVerification] = useState(false);
 
   async function loadMentors(shouldUpdate = () => true) {
     setLoading(true);
     setError("");
+    setRequiresLogin(false);
+    setRequiresVerification(false);
     try {
+      const me = await authApi.me();
+      if (!me.verified) {
+        if (shouldUpdate()) setRequiresVerification(true);
+        return;
+      }
       const items = await mentorApi.list();
       if (shouldUpdate()) setMentors(items);
     } catch (err) {
-      if (shouldUpdate()) setError(err.message || t("common.errorDescription"));
+      if (!shouldUpdate()) return;
+      if (isApiStatus(err, 401)) {
+        setAuthenticated(false);
+        setRequiresLogin(true);
+      } else if (isApiStatus(err, 403)) {
+        setRequiresVerification(true);
+      } else {
+        setError(err.message || t("common.errorDescription"));
+      }
     } finally {
       if (shouldUpdate()) setLoading(false);
     }
@@ -52,7 +70,7 @@ export default function MentorsPage() {
           <p className="page-kicker">{t("mentors.kicker")}</p>
           <h1 className="page-title">{t("mentors.title")}</h1>
         </div>
-        <Button icon={BriefcaseBusiness} variant="secondary" onClick={() => setApplying((current) => !current)}>{language === "ko" ? "멘토 지원" : "Apply as mentor"}</Button>
+        {!requiresLogin && !requiresVerification ? <Button icon={BriefcaseBusiness} variant="secondary" onClick={() => setApplying((current) => !current)}>{language === "ko" ? "멘토 지원" : "Apply as mentor"}</Button> : null}
       </header>
       {applying ? <form className="mentor-apply-form form-grid" onSubmit={async (event) => {
         event.preventDefault(); setSubmitting(true); setError(""); setApplicationMessage("");
@@ -75,6 +93,10 @@ export default function MentorsPage() {
       <SectionHeader title={t("mentors.available")} />
       {loading ? (
         <LoadingSkeleton count={3} />
+      ) : requiresLogin ? (
+        <EmptyState title={t("common.loginRequiredTitle")} description={language === "ko" ? "멘토 서비스는 로그인 후 이용할 수 있습니다." : "Sign in to use the mentor service."} actionLabel={t("common.goLogin")} onAction={() => navigate("/login")} />
+      ) : requiresVerification ? (
+        <EmptyState title={language === "ko" ? "대학생 인증이 필요합니다" : "Student verification required"} description={language === "ko" ? "학교 이메일 인증을 완료한 대학생만 멘토 서비스를 이용할 수 있습니다." : "Verify your university email to access mentors."} actionLabel={language === "ko" ? "학교 인증하기" : "Verify school email"} onAction={() => navigate("/onboarding")} />
       ) : error ? (
         <EmptyState
           title={t("common.errorTitle")}

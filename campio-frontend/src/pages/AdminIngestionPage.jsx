@@ -247,6 +247,8 @@ export default function AdminIngestionPage() {
                   <span className="field__label">Type</span>
                   <select className="field__input" value={form.type} onChange={(event) => setForm((current) => ({ ...current, type: event.target.value }))}>
                     <option value="API">API</option>
+                    <option value="YOUTH_POLICY_API">온통청년 API</option>
+                    <option value="WORK24_API">고용24 API</option>
                     <option value="RSS">RSS</option>
                     <option value="HTML">HTML</option>
                   </select>

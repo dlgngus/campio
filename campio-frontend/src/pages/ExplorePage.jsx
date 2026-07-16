@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import OpportunityFilters from "../components/opportunity/OpportunityFilters.jsx";
 import { categories, regions, sortOptions } from "../components/opportunity/OpportunityFilters.jsx";
@@ -10,9 +10,9 @@ import { setAuthenticated } from "../app/authSession.js";
 import { isApiStatus } from "../api/client.js";
 import { opportunityApi } from "../api/opportunityApi.js";
 import { savedApi } from "../api/savedApi.js";
-import { isStudentRelevantOpportunity } from "../app/studentOpportunityPolicy.js";
-import { resolveOpportunityLocation } from "../app/opportunityLocation.js";
 import "./pages.css";
+
+const PAGE_SIZE = 12;
 
 export default function ExplorePage() {
   const { t } = useSettings();
@@ -31,99 +31,87 @@ export default function ExplorePage() {
     onlineOnly: searchParams.get("online") === "true",
     savedOnly: searchParams.get("saved") === "true",
   });
-  const [page, setPage] = useState(1);
+  const initialPage = Math.max(1, Number.parseInt(searchParams.get("page") || "1", 10) || 1);
+  const [page, setPage] = useState(initialPage);
   const [opportunities, setOpportunities] = useState([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [savingIds, setSavingIds] = useState([]);
 
-  const filtered = useMemo(() => {
-    const query = filters.query.trim().toLowerCase();
-    const target = filters.target.trim().toLowerCase();
-    const today = new Date();
-    const filteredItems = opportunities.filter((item) => {
-      const location = resolveOpportunityLocation(item);
-      const matchesQuery =
-        !query ||
-        [item.title, item.organization, item.category, location, ...item.tags]
-          .join(" ")
-          .toLowerCase()
-          .includes(query);
-      const matchesCategory = filters.category === "All" || item.category === filters.category;
-      const matchesTarget = !target || String(item.target || "").toLowerCase().includes(target);
-      const matchesRegion = filters.region === "All" || location === filters.region;
-      const deadline = item.deadline ? new Date(`${item.deadline}T00:00:00`) : null;
-      const daysToDeadline = deadline ? Math.ceil((deadline - today) / (1000 * 60 * 60 * 24)) : null;
-      const matchesDeadline = !filters.deadlineOnly || (daysToDeadline !== null && daysToDeadline >= 0 && daysToDeadline <= 14);
-      const matchesOnline = !filters.onlineOnly || item.isOnline;
-      const matchesSaved = !filters.savedOnly || item.saved;
-      return matchesQuery && matchesTarget && matchesCategory && matchesRegion && matchesDeadline && matchesOnline && matchesSaved;
-    });
-    return filteredItems.sort((a, b) => {
-      if (filters.sortBy === "latest") {
-        return String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
-      }
-      if (filters.sortBy === "title") {
-        return String(a.title || "").localeCompare(String(b.title || ""), "ko");
-      }
-      if (filters.sortBy === "popular") {
-        return Number(b.popularityCount || 0) - Number(a.popularityCount || 0);
-      }
-      return String(a.deadline || "9999-12-31").localeCompare(String(b.deadline || "9999-12-31"));
-    });
-  }, [filters, opportunities]);
-  const totalPages = Math.max(1, Math.ceil(filtered.length / 12));
-  const paged = filtered.slice((page - 1) * 12, page * 12);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  async function loadOpportunities() {
-    setLoading(true);
-    setError("");
-    try {
-      const items = await opportunityApi.list();
-      setOpportunities(items.filter(isStudentRelevantOpportunity));
-    } catch (err) {
-      setError(err.message || t("common.errorDescription"));
-    } finally {
-      setLoading(false);
-    }
+  function searchRequest() {
+    return {
+      page: page - 1,
+      size: PAGE_SIZE,
+      q: filters.query.trim(),
+      target: filters.target.trim(),
+      category: filters.category === "All" ? "" : filters.category,
+      region: filters.region === "All" ? "" : filters.region,
+      deadlineSoon: filters.deadlineOnly,
+      online: filters.onlineOnly,
+      saved: filters.savedOnly,
+      sort: filters.sortBy,
+    };
   }
 
   useEffect(() => {
-    let mounted = true;
-    async function load() {
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
       setLoading(true);
       setError("");
       try {
-        const items = await opportunityApi.list();
-        if (mounted) setOpportunities(items.filter(isStudentRelevantOpportunity));
+        const result = await opportunityApi.search(searchRequest(), { signal: controller.signal });
+        setOpportunities(result.content);
+        setTotalElements(result.totalElements);
+        setTotalPages(result.totalPages);
       } catch (err) {
-        if (mounted) setError(err.message || t("common.errorDescription"));
+        if (controller.signal.aborted) return;
+        if (isApiStatus(err, 401) && filters.savedOnly) {
+          setAuthenticated(false);
+          navigate("/login");
+          return;
+        }
+        setError(err.message || t("common.errorDescription"));
       } finally {
-        if (mounted) setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
-    }
-    load();
+    }, 300);
     return () => {
-      mounted = false;
+      window.clearTimeout(timer);
+      controller.abort();
     };
-  }, [t]);
+  }, [filters, page, reloadKey, navigate, t]);
+
+  function syncUrl(updated, nextPage = 1) {
+    const params = new URLSearchParams();
+    if (updated.query) params.set("q", updated.query);
+    if (updated.target) params.set("target", updated.target);
+    if (updated.category !== "All") params.set("category", updated.category);
+    if (updated.region !== "All") params.set("region", updated.region);
+    if (updated.sortBy !== "deadline") params.set("sort", updated.sortBy);
+    if (updated.deadlineOnly) params.set("deadline", "soon");
+    if (updated.onlineOnly) params.set("online", "true");
+    if (updated.savedOnly) params.set("saved", "true");
+    if (nextPage > 1) params.set("page", String(nextPage));
+    navigate({ pathname: "/explore", search: params.toString() ? `?${params.toString()}` : "" }, { replace: true });
+  }
 
   function updateFilters(next) {
     setPage(1);
     setFilters((current) => {
       const updated = { ...current, ...next };
-      const params = new URLSearchParams();
-      if (updated.query) params.set("q", updated.query);
-      if (updated.target) params.set("target", updated.target);
-      if (updated.category !== "All") params.set("category", updated.category);
-      if (updated.region !== "All") params.set("region", updated.region);
-      if (updated.sortBy !== "deadline") params.set("sort", updated.sortBy);
-      if (updated.deadlineOnly) params.set("deadline", "soon");
-      if (updated.onlineOnly) params.set("online", "true");
-      if (updated.savedOnly) params.set("saved", "true");
-      navigate({ pathname: "/explore", search: params.toString() ? `?${params.toString()}` : "" }, { replace: true });
+      syncUrl(updated, 1);
       return updated;
     });
+  }
+
+  function changePage(nextPage) {
+    setPage(nextPage);
+    syncUrl(filters, nextPage);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function toggleSave(id) {
@@ -145,6 +133,7 @@ export default function ExplorePage() {
       } else {
         await savedApi.save(id);
       }
+      if (filters.savedOnly) setReloadKey((currentKey) => currentKey + 1);
     } catch (err) {
       setOpportunities((items) => items.map((item) => (item.id === id ? { ...item, saved: current.saved } : item)));
       if (isApiStatus(err, 401)) {
@@ -162,7 +151,7 @@ export default function ExplorePage() {
     <div className="page">
       <header className="page-header">
         <div>
-          <p className="page-kicker">{filtered.length} {t("explore.matches")}</p>
+          <p className="page-kicker">{totalElements} {t("explore.matches")}</p>
           <h1 className="page-title">{t("explore.title")}</h1>
         </div>
       </header>
@@ -175,10 +164,10 @@ export default function ExplorePage() {
             title={t("common.errorTitle")}
             description={error}
             actionLabel={t("common.retry")}
-            onAction={loadOpportunities}
+            onAction={() => setReloadKey((current) => current + 1)}
           />
         ) : (
-          <div><OpportunityGrid opportunities={paged} onToggleSave={toggleSave} />{totalPages > 1 ? <nav className="pagination" aria-label="Pagination"><button type="button" disabled={page === 1} onClick={() => setPage((current) => current - 1)}>{"<"}</button><span>{page} / {totalPages}</span><button type="button" disabled={page === totalPages} onClick={() => setPage((current) => current + 1)}>{">"}</button></nav> : null}</div>
+          <div><OpportunityGrid opportunities={opportunities} onToggleSave={toggleSave} />{totalPages > 1 ? <nav className="pagination" aria-label="Pagination"><button type="button" disabled={page === 1} onClick={() => changePage(page - 1)}>{"<"}</button><span>{page} / {totalPages}</span><button type="button" disabled={page >= totalPages} onClick={() => changePage(page + 1)}>{">"}</button></nav> : null}</div>
         )}
       </div>
     </div>

@@ -21,15 +21,24 @@ export default function MentorDetailPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [requiresLogin, setRequiresLogin] = useState(false);
+  const [requiresVerification, setRequiresVerification] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    mentorApi.detail(id).then((item) => mounted && setMentor(item)).catch((err) => mounted && setError(err.message || t("common.errorDescription"))).finally(() => mounted && setLoading(false));
+    mentorApi.detail(id).then((item) => mounted && setMentor(item)).catch((err) => {
+      if (!mounted) return;
+      if (isApiStatus(err, 401)) { setAuthenticated(false); setRequiresLogin(true); }
+      else if (isApiStatus(err, 403)) setRequiresVerification(true);
+      else setError(err.message || t("common.errorDescription"));
+    }).finally(() => mounted && setLoading(false));
     mentorApi.myQuestions().then((items) => mounted && setQuestions(items.filter((item) => String(item.mentorId) === String(id)))).catch(() => {});
     return () => { mounted = false; };
   }, [id, t]);
 
   if (loading) return <LoadingSkeleton count={3} />;
+  if (requiresLogin) return <EmptyState title={t("common.loginRequiredTitle")} description={language === "ko" ? "멘토 서비스는 로그인 후 이용할 수 있습니다." : "Sign in to use the mentor service."} actionLabel={t("common.goLogin")} onAction={() => navigate("/login")} />;
+  if (requiresVerification) return <EmptyState title={language === "ko" ? "대학생 인증이 필요합니다" : "Student verification required"} description={language === "ko" ? "학교 이메일 인증을 완료한 대학생만 멘토 서비스를 이용할 수 있습니다." : "Verify your university email to access mentors."} actionLabel={language === "ko" ? "학교 인증하기" : "Verify school email"} onAction={() => navigate("/onboarding")} />;
   if (!mentor) return <EmptyState title={t("mentors.emptyTitle")} description={error || t("mentors.emptyDescription")} actionLabel={t("nav.mentors")} actionTo="/mentors" />;
 
   return <div className="page mentor-detail stack">

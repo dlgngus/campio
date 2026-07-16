@@ -43,11 +43,12 @@ export default function ProfilePage() {
   async function loadProfile(active = () => true) {
     setLoading(true); setError(""); setRequiresLogin(false);
     try {
-      const [me, saved, records, all, myPosts] = await Promise.all([
-        authApi.me(), savedApi.list(), applicationApi.list(), opportunityApi.list(), communityApi.myPosts(),
+      const [me, saved, records, myPosts] = await Promise.all([
+        authApi.me(), savedApi.list(), applicationApi.list(), communityApi.myPosts(),
       ]);
+      const all = await opportunityApi.batch(records.map((record) => record.opportunityId));
       let received = [];
-      try { received = await mentorApi.receivedQuestions(); } catch (err) { if (!isApiStatus(err, 404)) throw err; }
+      try { received = await mentorApi.receivedQuestions(); } catch (err) { if (!isApiStatus(err, 403) && !isApiStatus(err, 404)) throw err; }
       if (!active()) return;
       setUser(me); setSavedCount(saved.length); setApplications(records); setOpportunities(all); setPosts(myPosts); setInbox(received);
       setForm({ name: me.name || "", school: me.school || "", major: me.major || "", grade: me.grade || "", interests: me.interests || "" });

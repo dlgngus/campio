@@ -28,11 +28,11 @@ export default function HomePage() {
     setLoading(true);
     setError("");
     try {
-      const [recommended, closing, popular, all] = await Promise.all([
+      const [recommended, closing, popular, latest] = await Promise.all([
         opportunityApi.recommended(),
         opportunityApi.closingSoon(),
         opportunityApi.popular(),
-        opportunityApi.list(),
+        opportunityApi.search({ page: 0, size: 12, sort: "latest" }),
       ]);
       let me = null;
       try {
@@ -43,7 +43,7 @@ export default function HomePage() {
       }
       if (active()) {
         setUser(me);
-        setData({ recommended, closing: closing.slice(0, 4), popular: popular.slice(0, 4), all });
+        setData({ recommended, closing: closing.slice(0, 4), popular: popular.slice(0, 4), all: latest.content });
       }
     } catch (err) {
       if (active()) setError(err.message || t("common.errorDescription"));

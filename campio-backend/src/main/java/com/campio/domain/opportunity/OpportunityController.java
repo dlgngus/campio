@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,6 +26,29 @@ public class OpportunityController {
   @GetMapping
   public List<OpportunityResponse> list(HttpSession session) {
     return opportunityService.listAll(session);
+  }
+
+  @GetMapping("/search")
+  public OpportunityPageResponse search(
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "12") int size,
+      @RequestParam(required = false) String q,
+      @RequestParam(required = false) String target,
+      @RequestParam(required = false) String category,
+      @RequestParam(required = false) String region,
+      @RequestParam(defaultValue = "false") boolean deadlineSoon,
+      @RequestParam(defaultValue = "false") boolean online,
+      @RequestParam(defaultValue = "false") boolean saved,
+      @RequestParam(defaultValue = "deadline") String sort,
+      HttpSession session) {
+    return opportunityService.search(
+        page, size, q, target, category, region, deadlineSoon, online, saved, sort, session);
+  }
+
+  @GetMapping("/batch")
+  public List<OpportunityResponse> batch(
+      @RequestParam List<Long> ids, HttpSession session) {
+    return opportunityService.findPublishedByIds(ids, session);
   }
 
   @GetMapping("/recommended")

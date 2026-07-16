@@ -27,6 +27,7 @@ import org.springframework.web.client.RestTemplate;
 public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
 
   private static final int MAX_PAGES = 20;
+  private static final int MAX_DETAIL_FETCHES = 40;
   private static final int MAX_RESPONSE_CHARS = 2_000_000;
   private static final Pattern LISTING_PATTERN = Pattern.compile(
       "([가-힣A-Za-z0-9ㆍ·&/()\\[\\].,'\\-\\s]+?)\\s+D-\\d+\\s+(.+?)\\s+새로운게시글\\s+(.+?)\\s+등록일자\\s+(\\d{4}-\\d{2}-\\d{2})\\s+시작일자\\s+(\\d{4}-\\d{2}-\\d{2})\\s+마감일자\\s+(\\d{4}-\\d{2}-\\d{2})\\s+조회",
@@ -46,6 +47,12 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
       Pattern.DOTALL);
   private static final Pattern BIZINFO_LAST_PAGE_PATTERN = Pattern.compile("cpage=(\\d+)[^\"]*\"[^>]*title=\"마지막페이지\"");
   private static final Pattern BIZINFO_DATE_RANGE_PATTERN = Pattern.compile("(\\d{4}-\\d{2}-\\d{2})\\s*~\\s*(\\d{4}-\\d{2}-\\d{2})");
+  private static final Pattern KSTARTUP_SUMMARY_PATTERN = Pattern.compile(
+      "(?is)<div[^>]*class=\"[^\"]*box[^\"]*\"[^>]*>.*?<p[^>]*class=\"[^\"]*txt[^\"]*\"[^>]*>(.*?)</p>");
+  private static final Pattern KSTARTUP_TARGET_PATTERN = Pattern.compile(
+      "(?is)신청대상</p>\\s*<p[^>]*class=\"[^\"]*txt[^\"]*\"[^>]*>(.*?)</p>");
+  private static final Pattern KSTARTUP_APPLY_URL_PATTERN = Pattern.compile(
+      "fn_open_window\\('((?:https?://)[^']+)'\\)");
   private static final List<RegionAlias> REGION_ALIASES = List.of(
       new RegionAlias("서울특별시", "서울특별시"),
       new RegionAlias("부산광역시", "부산광역시"),
@@ -102,7 +109,9 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
     for (int page = 2; page <= lastPage; page++) {
       results.addAll(parse(source, fetchPage(withPage(source.getBaseUrl(), page))));
     }
-    return results;
+    return source.getBaseUrl().contains("k-startup.go.kr") && !source.getBaseUrl().contains("/mock/")
+        ? enrichKStartupDetails(results)
+        : results;
   }
 
   private String fetchPage(String url) {
@@ -220,7 +229,10 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
           .rawPayload("{\"source\":\"Bizinfo\",\"category\":\"" + escape(category) + "\",\"period\":\"" + escape(period) + "\"}")
           .organization(organization)
           .category(StudentOpportunityPolicy.classifyCategory(title, category, content))
-          .description("기업마당 공개 지원사업 공고입니다. 자세한 내용과 신청은 원본 출처에서 확인하세요.")
+          .description(content)
+          .requirements("신청기간: " + period)
+          .benefits("지원 분야: " + category)
+          .target(owner)
           .deadline(deadline)
           .startDate(startDate == null ? registeredAt : startDate)
           .location(location)
@@ -254,7 +266,8 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
         .rawPayload("{\"source\":\"K-Startup\",\"category\":\"" + escape(category) + "\"}")
         .organization(organization)
         .category(firstNonBlank(source.getCategoryHint(), category))
-        .description("K-Startup 공개 모집중 사업공고입니다. 자세한 내용과 신청은 원본 출처에서 확인하세요.")
+        .description(String.join(" / ", category, organization, "접수 " + startDate + " ~ " + deadline))
+        .requirements("접수기간: " + startDate + " ~ " + deadline)
         .deadline(deadline)
         .startDate(startDate)
         .location(location)
@@ -262,6 +275,63 @@ public class KStartupHtmlIngestionAdapter implements IngestionAdapter {
         .applyUrl(sourceUrl)
         .tags(buildTags("K-Startup", category, location))
         .build();
+  }
+
+  private List<FetchedRawOpportunity> enrichKStartupDetails(List<FetchedRawOpportunity> items) {
+    List<FetchedRawOpportunity> enriched = new ArrayList<>(items.size());
+    for (int index = 0; index < items.size(); index++) {
+      FetchedRawOpportunity item = items.get(index);
+      if (index >= MAX_DETAIL_FETCHES || item.getApplyUrl() == null) {
+        enriched.add(item);
+        continue;
+      }
+      try {
+        String html = fetchPage(item.getApplyUrl());
+        String summary = extractFirst(html, KSTARTUP_SUMMARY_PATTERN);
+        String target = extractFirst(html, KSTARTUP_TARGET_PATTERN);
+        String requirements = extractLabeledSection(html, "신청방법 및 대상");
+        String documents = extractLabeledSection(html, "제출서류");
+        String benefits = extractLabeledSection(html, "지원내용");
+        if (benefits.isBlank() || "해당없음".equals(benefits)) {
+          benefits = extractLabeledSection(html, "행사안내");
+        }
+        String applyUrl = extractFirst(html, KSTARTUP_APPLY_URL_PATTERN);
+        enriched.add(item.toBuilder()
+            .description(firstNonBlank(summary, item.getDescription()))
+            .requirements(limitText(joinSections(requirements, documents)))
+            .benefits(limitText(benefits))
+            .target(firstNonBlank(target, item.getTarget()))
+            .applyUrl(firstNonBlank(applyUrl, item.getApplyUrl()))
+            .build());
+      } catch (RuntimeException ex) {
+        enriched.add(item);
+      }
+    }
+    return enriched;
+  }
+
+  private String extractLabeledSection(String html, String label) {
+    String marker = ">" + label + "</p>";
+    int start = html.indexOf(marker);
+    if (start < 0) return "";
+    int contentStart = start + marker.length();
+    int end = html.indexOf("<div class=\"information_list\"", contentStart);
+    if (end < 0) end = Math.min(html.length(), contentStart + 20_000);
+    return clean(stripTags(html.substring(contentStart, end)))
+        .replace("신청 시 요청하는 정보(개인정보포함)는 사업운영기관에서 관리되오니 이점 반드시 유의하여 주시기 바랍니다.", "")
+        .replace("제출하신 서류는 사업운영기관에서 관리되오니 서류 반환 등 문의는 해당 기관으로 하시기 바랍니다.", "")
+        .trim();
+  }
+
+  private String joinSections(String first, String second) {
+    if (first.isBlank()) return second;
+    if (second.isBlank()) return first;
+    return first + " / 제출서류: " + second;
+  }
+
+  private String limitText(String value) {
+    String cleaned = value == null ? "" : value.trim();
+    return cleaned.length() <= 10_000 ? cleaned : cleaned.substring(0, 10_000);
   }
 
   private List<String> buildTags(String sourceName, String category, String ownerOrLocation) {

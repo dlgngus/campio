@@ -31,11 +31,11 @@ export default function SavedPage() {
     setError("");
     setRequiresLogin(false);
     try {
-      const [items, records, opportunities] = await Promise.all([
+      const [items, records] = await Promise.all([
         savedApi.list(),
         applicationApi.list(),
-        opportunityApi.list(),
       ]);
+      const opportunities = await opportunityApi.batch(records.map((record) => record.opportunityId));
       if (shouldUpdate()) {
         setSaved(items);
         setApplications(records);

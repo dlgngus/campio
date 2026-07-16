@@ -13,10 +13,19 @@ import java.util.Set;
 import java.net.URI;
 import java.util.Comparator;
 import java.util.Locale;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import com.campio.global.exception.BadRequestException;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import javax.servlet.http.HttpSession;
+import javax.persistence.criteria.Join;
+import javax.persistence.criteria.JoinType;
+import javax.persistence.criteria.Predicate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,35 +48,102 @@ public class OpportunityService {
   }
 
   @Transactional(readOnly = true)
+  public OpportunityPageResponse search(
+      int page,
+      int size,
+      String query,
+      String target,
+      String category,
+      String region,
+      boolean deadlineSoon,
+      boolean online,
+      boolean savedOnly,
+      String sort,
+      HttpSession session) {
+    int safePage = Math.max(0, page);
+    int safeSize = Math.min(48, Math.max(1, size));
+    Set<Long> savedIds = savedOpportunityIds(session, savedOnly);
+
+    Specification<Opportunity> specification = searchSpecification(
+        query, target, category, region, deadlineSoon, online, savedOnly, savedIds);
+    Page<Opportunity> result = opportunityRepository.findAll(
+        specification, PageRequest.of(safePage, safeSize, searchSort(sort)));
+
+    List<Long> ids = result.getContent().stream().map(Opportunity::getId).collect(Collectors.toList());
+    Map<Long, Opportunity> hydrated = opportunityRepository.findAllById(ids).stream()
+        .collect(Collectors.toMap(Opportunity::getId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
+    List<OpportunityResponse> content = ids.stream()
+        .map(hydrated::get)
+        .filter(java.util.Objects::nonNull)
+        .map(opportunity -> toResponse(opportunity, savedIds.contains(opportunity.getId())))
+        .collect(Collectors.toList());
+
+    return new OpportunityPageResponse(
+        content,
+        result.getNumber(),
+        result.getSize(),
+        result.getTotalElements(),
+        result.getTotalPages(),
+        result.isFirst(),
+        result.isLast());
+  }
+
+  @Transactional(readOnly = true)
   public List<OpportunityResponse> recommended(HttpSession session) {
     LocalDate today = LocalDate.now();
     Set<String> terms = userService.recommendationTerms(session);
-    List<Opportunity> list = filterStudentRelevant(
-        opportunityRepository.findByStatusIgnoreCaseOrderByCreatedAtDesc(PUBLISHED))
+    Specification<Opportunity> active = (root, criteriaQuery, builder) -> builder.and(
+        builder.equal(builder.upper(root.get("status")), PUBLISHED),
+        builder.or(builder.isNull(root.get("deadline")), builder.greaterThanOrEqualTo(root.get("deadline"), today)));
+    Page<Opportunity> candidates = opportunityRepository.findAll(
+        active,
+        PageRequest.of(0, 200, Sort.by(
+            Sort.Order.desc("recommended"), Sort.Order.desc("popularityCount"), Sort.Order.desc("createdAt"))));
+    List<Opportunity> list = hydrate(candidates.getContent())
         .stream()
-        .filter(opportunity -> opportunity.getDeadline() == null || !opportunity.getDeadline().isBefore(today))
         .sorted(Comparator
             .comparingInt((Opportunity opportunity) -> recommendationScore(opportunity, terms)).reversed()
             .thenComparing(opportunity -> opportunity.getDeadline() == null ? LocalDate.MAX : opportunity.getDeadline()))
         .limit(8)
         .collect(Collectors.toList());
-    return mapWithSaved(filterStudentRelevant(list), session);
+    return mapWithSaved(list, session);
+  }
+
+  @Transactional(readOnly = true)
+  public List<OpportunityResponse> findPublishedByIds(Collection<Long> ids, HttpSession session) {
+    List<Long> uniqueIds = ids == null ? List.of() : ids.stream()
+        .filter(java.util.Objects::nonNull)
+        .distinct()
+        .limit(100)
+        .collect(Collectors.toList());
+    if (uniqueIds.isEmpty()) {
+      return List.of();
+    }
+    Map<Long, Opportunity> found = opportunityRepository.findAllById(uniqueIds).stream()
+        .filter(opportunity -> PUBLISHED.equalsIgnoreCase(opportunity.getStatus()))
+        .filter(opportunity -> StudentOpportunityPolicy.isStudentRelevant(
+            opportunity.getTitle(), opportunity.getOrganization(), opportunity.getCategory(),
+            opportunity.getDescription(), opportunity.getTarget(), opportunity.getTags()))
+        .collect(Collectors.toMap(Opportunity::getId, Function.identity()));
+    List<Opportunity> ordered = uniqueIds.stream().map(found::get)
+        .filter(java.util.Objects::nonNull).collect(Collectors.toList());
+    return mapWithSaved(ordered, session);
   }
 
   @Transactional(readOnly = true)
   public List<OpportunityResponse> closingSoon(HttpSession session) {
     LocalDate today = LocalDate.now();
-    return mapWithSaved(
-        filterStudentRelevant(opportunityRepository.findByStatusIgnoreCaseAndDeadlineBetweenOrderByDeadlineAsc(
-            PUBLISHED, today, today.plusDays(30))),
-        session);
+    Page<Opportunity> page = opportunityRepository.findByStatusIgnoreCaseAndDeadlineBetween(
+        PUBLISHED, today, today.plusDays(30), PageRequest.of(0, 8, Sort.by("deadline").ascending()));
+    return mapWithSaved(hydrate(page.getContent()), session);
   }
 
   @Transactional(readOnly = true)
   public List<OpportunityResponse> popular(HttpSession session) {
-    return mapWithSaved(
-        filterStudentRelevant(opportunityRepository.findByStatusIgnoreCaseOrderByPopularityCountDesc(PUBLISHED)),
-        session);
+    Page<Opportunity> page = opportunityRepository.findByStatusIgnoreCase(
+        PUBLISHED,
+        PageRequest.of(0, 8, Sort.by(Sort.Order.desc("popularityCount"), Sort.Order.desc("createdAt"))));
+    return mapWithSaved(hydrate(page.getContent()), session);
   }
 
   @Transactional(readOnly = true)
@@ -209,6 +285,155 @@ public class OpportunityService {
     return opportunities.stream()
         .map(opportunity -> toResponse(opportunity, savedIds.contains(opportunity.getId())))
         .collect(Collectors.toList());
+  }
+
+  private Set<Long> savedOpportunityIds(HttpSession session, boolean required) {
+    Long userId = required
+        ? userService.currentUserId(session)
+        : userService.optionalCurrentUserId(session);
+    if (userId == null) {
+      return Set.of();
+    }
+    return savedOpportunityRepository.findByUserId(userId).stream()
+        .map(savedOpportunity -> savedOpportunity.getOpportunityId())
+        .collect(Collectors.toSet());
+  }
+
+  private Specification<Opportunity> searchSpecification(
+      String queryText,
+      String target,
+      String category,
+      String region,
+      boolean deadlineSoon,
+      boolean online,
+      boolean savedOnly,
+      Set<Long> savedIds) {
+    return (root, criteriaQuery, builder) -> {
+      criteriaQuery.distinct(true);
+      boolean categoryFilter = hasText(category) && !"All".equalsIgnoreCase(category.trim());
+      boolean regionFilter = hasText(region) && !"All".equalsIgnoreCase(region.trim());
+      Join<Opportunity, String> tag = hasText(queryText) || categoryFilter || regionFilter
+          ? root.join("tags", JoinType.LEFT)
+          : null;
+      List<Predicate> predicates = new ArrayList<>();
+      predicates.add(builder.equal(builder.upper(root.get("status")), PUBLISHED));
+
+      addTextSearch(predicates, builder, root, tag, queryText);
+      if (hasText(target)) {
+        predicates.add(textContains(builder, root.get("target"), target.trim()));
+      }
+      if (categoryFilter) {
+        predicates.add(categoryPredicate(builder, root, tag, category.trim()));
+      }
+      if (regionFilter) {
+        List<Predicate> locationMatches = new ArrayList<>();
+        for (String term : regionTerms(region.trim())) {
+          locationMatches.add(textContains(builder, root.get("location"), term));
+          locationMatches.add(textContains(builder, root.get("title"), term));
+          locationMatches.add(textContains(builder, root.get("organization"), term));
+          locationMatches.add(textContains(builder, tag, term));
+        }
+        predicates.add(builder.or(locationMatches.toArray(new Predicate[0])));
+      }
+      if (deadlineSoon) {
+        LocalDate today = LocalDate.now();
+        predicates.add(builder.between(root.get("deadline"), today, today.plusDays(14)));
+      }
+      if (online) {
+        predicates.add(builder.isTrue(root.get("isOnline")));
+      }
+      if (savedOnly) {
+        predicates.add(savedIds.isEmpty() ? builder.disjunction() : root.get("id").in(savedIds));
+      }
+      return builder.and(predicates.toArray(new Predicate[0]));
+    };
+  }
+
+  private void addTextSearch(
+      List<Predicate> predicates,
+      javax.persistence.criteria.CriteriaBuilder builder,
+      javax.persistence.criteria.Root<Opportunity> root,
+      Join<Opportunity, String> tag,
+      String value) {
+    if (!hasText(value)) {
+      return;
+    }
+    String text = value.trim();
+    predicates.add(builder.or(
+        textContains(builder, root.get("title"), text),
+        textContains(builder, root.get("organization"), text),
+        textContains(builder, root.get("category"), text),
+        textContains(builder, root.get("description"), text),
+        textContains(builder, root.get("target"), text),
+        textContains(builder, root.get("location"), text),
+        tag == null ? builder.disjunction() : textContains(builder, tag, text)));
+  }
+
+  private Predicate categoryPredicate(
+      javax.persistence.criteria.CriteriaBuilder builder,
+      javax.persistence.criteria.Root<Opportunity> root,
+      Join<Opportunity, String> tag,
+      String category) {
+    List<Predicate> matches = new ArrayList<>();
+    matches.add(builder.equal(builder.lower(root.get("category")), category.toLowerCase(Locale.ROOT)));
+    for (String keyword : StudentOpportunityPolicy.categoryKeywords(category)) {
+      matches.add(textContains(builder, root.get("title"), keyword));
+      matches.add(textContains(builder, root.get("description"), keyword));
+      matches.add(textContains(builder, root.get("target"), keyword));
+      matches.add(textContains(builder, tag, keyword));
+    }
+    return builder.or(matches.toArray(new Predicate[0]));
+  }
+
+  private Predicate textContains(
+      javax.persistence.criteria.CriteriaBuilder builder,
+      javax.persistence.criteria.Expression<String> expression,
+      String value) {
+    return builder.like(
+        builder.lower(builder.coalesce(expression, "")),
+        "%" + value.toLowerCase(Locale.ROOT) + "%");
+  }
+
+  private Sort searchSort(String value) {
+    String normalized = value == null ? "deadline" : value.trim().toLowerCase(Locale.ROOT);
+    switch (normalized) {
+      case "popular":
+        return Sort.by(Sort.Order.desc("popularityCount"), Sort.Order.desc("createdAt"));
+      case "latest":
+        return Sort.by(Sort.Order.desc("createdAt"));
+      case "title":
+        return Sort.by(Sort.Order.asc("title"));
+      case "deadline":
+        return Sort.by(Sort.Order.asc("deadline").nullsLast(), Sort.Order.desc("createdAt"));
+      default:
+        throw new BadRequestException("Unsupported opportunity sort");
+    }
+  }
+
+  private List<String> regionTerms(String region) {
+    Map<String, String> shortNames = Map.ofEntries(
+        Map.entry("서울특별시", "서울"), Map.entry("부산광역시", "부산"),
+        Map.entry("대구광역시", "대구"), Map.entry("인천광역시", "인천"),
+        Map.entry("광주광역시", "광주"), Map.entry("대전광역시", "대전"),
+        Map.entry("울산광역시", "울산"), Map.entry("세종특별자치시", "세종"),
+        Map.entry("경기도", "경기"), Map.entry("강원특별자치도", "강원"),
+        Map.entry("충청북도", "충북"), Map.entry("충청남도", "충남"),
+        Map.entry("전북특별자치도", "전북"), Map.entry("전라남도", "전남"),
+        Map.entry("경상북도", "경북"), Map.entry("경상남도", "경남"),
+        Map.entry("제주특별자치도", "제주"));
+    String shortName = shortNames.get(region);
+    return shortName == null ? List.of(region) : List.of(region, shortName);
+  }
+
+  private boolean hasText(String value) {
+    return value != null && !value.isBlank();
+  }
+
+  private List<Opportunity> hydrate(List<Opportunity> opportunities) {
+    List<Long> ids = opportunities.stream().map(Opportunity::getId).collect(Collectors.toList());
+    Map<Long, Opportunity> hydrated = opportunityRepository.findAllById(ids).stream()
+        .collect(Collectors.toMap(Opportunity::getId, Function.identity()));
+    return ids.stream().map(hydrated::get).filter(java.util.Objects::nonNull).collect(Collectors.toList());
   }
 
   private List<Opportunity> filterStudentRelevant(List<Opportunity> opportunities) {

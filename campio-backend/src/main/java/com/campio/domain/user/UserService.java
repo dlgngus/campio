@@ -207,6 +207,15 @@ public class UserService {
   }
 
   @Transactional(readOnly = true)
+  public User requireVerifiedStudent(HttpSession session) {
+    User user = findCurrentUser(session);
+    if (!user.isVerified()) {
+      throw new ForbiddenException("School verification is required");
+    }
+    return user;
+  }
+
+  @Transactional(readOnly = true)
   public boolean isAdmin(HttpSession session) {
     Long userId = optionalCurrentUserId(session);
     return userId != null

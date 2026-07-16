@@ -7,7 +7,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 @Getter
-@Builder
+@Builder(toBuilder = true)
 @AllArgsConstructor
 public class FetchedRawOpportunity {
   private String externalId;
@@ -19,6 +19,9 @@ public class FetchedRawOpportunity {
   private String organization;
   private String category;
   private String description;
+  private String requirements;
+  private String benefits;
+  private String target;
   private LocalDate deadline;
   private LocalDate startDate;
   private LocalDate endDate;

@@ -42,6 +42,8 @@ campio:
     email: ${CAMPIO_ADMIN_EMAIL:}
     password: ${CAMPIO_ADMIN_PASSWORD:}
   ingestion:
+    youth-center-api-key: ${CAMPIO_YOUTH_CENTER_API_KEY:}
+    work24-api-key: ${CAMPIO_WORK24_API_KEY:}
     bootstrap-sources-enabled: ${CAMPIO_INGESTION_BOOTSTRAP_SOURCES_ENABLED:false}
     auto-run-on-startup: ${CAMPIO_INGESTION_AUTO_RUN_ON_STARTUP:false}
     auto-run-only-when-empty: ${CAMPIO_INGESTION_AUTO_RUN_ONLY_WHEN_EMPTY:true}

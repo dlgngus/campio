@@ -41,6 +41,21 @@ public final class StudentOpportunityPolicy {
 
   private StudentOpportunityPolicy() {}
 
+  static List<String> categoryKeywords(String category) {
+    switch (safe(category).trim().toLowerCase()) {
+      case "scholarship": return List.of("장학", "학자금", "등록금");
+      case "contest": return List.of("공모전", "경진대회", "해커톤", "대회");
+      case "internship": return List.of("인턴", "일경험", "채용", "취업", "현장실습");
+      case "external activity": return List.of("서포터즈", "봉사", "대외활동", "캠프");
+      case "mentoring": return List.of("멘토", "멘토링", "컨설팅");
+      case "seminar": return List.of("세미나", "교육", "아카데미", "강의", "부트캠프");
+      case "startup": return List.of("창업", "스타트업", "예비창업");
+      case "research": return List.of("연구", "r&d", "기술개발", "논문");
+      case "exchange": return List.of("교환학생", "교류", "유학");
+      default: return List.of();
+    }
+  }
+
   public static boolean isStudentRelevant(
       String title,
       String organization,

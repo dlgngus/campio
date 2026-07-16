@@ -5,7 +5,6 @@ import com.campio.domain.user.User;
 import com.campio.domain.user.UserRepository;
 import com.campio.domain.user.UserService;
 import com.campio.global.exception.BadRequestException;
-import com.campio.global.exception.ForbiddenException;
 import com.campio.global.exception.NotFoundException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -35,6 +34,7 @@ public class MentorService {
 
   @Transactional(readOnly = true)
   public List<MentorProfileResponse> list(HttpSession session) {
+    userService.requireVerifiedStudent(session);
     return toResponses(mentorProfileRepository.findByAvailableTrueOrderByIdAsc(), session);
   }
 
@@ -46,6 +46,7 @@ public class MentorService {
 
   @Transactional(readOnly = true)
   public MentorProfileResponse detail(Long id, HttpSession session) {
+    userService.requireVerifiedStudent(session);
     MentorProfile mentor = findMentor(id);
     Long currentUserId = userService.optionalCurrentUserId(session);
     if (!mentor.isAvailable()
@@ -58,8 +59,7 @@ public class MentorService {
 
   @Transactional
   public MentorProfileResponse apply(MentorApplyRequest request, HttpSession session) {
-    User user = userService.findCurrentUser(session);
-    if (!user.isVerified()) throw new ForbiddenException("School verification is required");
+    User user = userService.requireVerifiedStudent(session);
     MentorProfile mentor = mentorProfileRepository.findByUserId(user.getId()).orElseGet(MentorProfile::new);
     if (mentor.getId() == null) {
       mentor.setUserId(user.getId());
@@ -85,6 +85,7 @@ public class MentorService {
 
   @Transactional
   public MentorQuestionResponse askQuestion(Long mentorId, MentorQuestionRequest request, HttpSession session) {
+    userService.requireVerifiedStudent(session);
     MentorProfile mentor = findMentor(mentorId);
     long userId = userService.currentUserId(session);
     if (!mentor.isAvailable() && !userService.isAdmin(session) && !Long.valueOf(userId).equals(mentor.getUserId())) {
@@ -106,11 +107,13 @@ public class MentorService {
 
   @Transactional(readOnly = true)
   public List<MentorQuestionResponse> myQuestions(HttpSession session) {
+    userService.requireVerifiedStudent(session);
     return toQuestionResponses(mentorQuestionRepository.findByUserIdOrderByCreatedAtDesc(userService.currentUserId(session)));
   }
 
   @Transactional(readOnly = true)
   public List<MentorQuestionResponse> receivedQuestions(HttpSession session) {
+    userService.requireVerifiedStudent(session);
     MentorProfile mentor = mentorProfileRepository.findByUserId(userService.currentUserId(session))
         .orElseThrow(() -> new NotFoundException("Mentor profile not found"));
     return toQuestionResponses(mentorQuestionRepository.findByMentorIdOrderByCreatedAtDesc(mentor.getId()));
@@ -118,6 +121,7 @@ public class MentorService {
 
   @Transactional
   public MentorQuestionResponse answer(Long questionId, MentorAnswerRequest request, HttpSession session) {
+    userService.requireVerifiedStudent(session);
     MentorProfile mentor = mentorProfileRepository.findByUserId(userService.currentUserId(session))
         .orElseThrow(() -> new NotFoundException("Mentor profile not found"));
     MentorQuestion question = mentorQuestionRepository.findById(questionId)

@@ -26,6 +26,12 @@ public class DataBootstrapper {
   @Value("${campio.ingestion.bootstrap-sources-enabled:false}")
   private boolean bootstrapSourcesEnabled;
 
+  @Value("${campio.ingestion.youth-center-api-key:}")
+  private String youthCenterApiKey;
+
+  @Value("${campio.ingestion.work24-api-key:}")
+  private String work24ApiKey;
+
   @Bean
   CommandLineRunner bootstrapAdminAndSources(
       UserRepository userRepository,
@@ -72,6 +78,22 @@ public class DataBootstrapper {
         "기업마당 지원사업 공고",
         "https://www.bizinfo.go.kr/sii/siia/selectSIIA200View.do?rows=15&cpage=1",
         "Government Support");
+    if (youthCenterApiKey != null && !youthCenterApiKey.isBlank()) {
+      createSourceIfMissing(
+          sourceRepository,
+          "온통청년 청년정책",
+          "https://www.youthcenter.go.kr/opi/youthPlcyList.do?display=100&pageIndex=1",
+          "Government Support",
+          OpportunitySourceType.YOUTH_POLICY_API);
+    }
+    if (work24ApiKey != null && !work24ApiKey.isBlank()) {
+      createSourceIfMissing(
+          sourceRepository,
+          "고용24 인턴 채용정보",
+          "https://www.work24.go.kr/cm/openApi/call/wk/callOpenApiSvcInfo210L01.do?callTp=L&returnType=XML&startPage=1&display=100&career=N&keyword=%EC%9D%B8%ED%84%B4",
+          "Internship",
+          OpportunitySourceType.WORK24_API);
+    }
   }
 
   private void createSourceIfMissing(
@@ -79,12 +101,21 @@ public class DataBootstrapper {
       String name,
       String baseUrl,
       String categoryHint) {
+    createSourceIfMissing(sourceRepository, name, baseUrl, categoryHint, OpportunitySourceType.HTML);
+  }
+
+  private void createSourceIfMissing(
+      OpportunitySourceRepository sourceRepository,
+      String name,
+      String baseUrl,
+      String categoryHint,
+      OpportunitySourceType type) {
     if (sourceRepository.findByName(name).isPresent()) {
       return;
     }
     OpportunitySource source = new OpportunitySource();
     source.setName(name);
-    source.setType(OpportunitySourceType.HTML.name());
+    source.setType(type.name());
     source.setBaseUrl(baseUrl);
     source.setCategoryHint(categoryHint);
     source.setCrawlIntervalMinutes(1440);

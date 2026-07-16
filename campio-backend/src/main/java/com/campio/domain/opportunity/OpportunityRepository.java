@@ -4,12 +4,15 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
-public interface OpportunityRepository extends JpaRepository<Opportunity, Long> {
+public interface OpportunityRepository extends JpaRepository<Opportunity, Long>, JpaSpecificationExecutor<Opportunity> {
   @Override
   @EntityGraph(attributePaths = "tags")
   Optional<Opportunity> findById(Long id);
@@ -35,8 +38,13 @@ public interface OpportunityRepository extends JpaRepository<Opportunity, Long> 
   List<Opportunity> findByStatusIgnoreCaseAndDeadlineBetweenOrderByDeadlineAsc(
       String status, LocalDate start, LocalDate end);
 
+  Page<Opportunity> findByStatusIgnoreCaseAndDeadlineBetween(
+      String status, LocalDate start, LocalDate end, Pageable pageable);
+
   @EntityGraph(attributePaths = "tags")
   List<Opportunity> findByStatusIgnoreCaseOrderByPopularityCountDesc(String status);
+
+  Page<Opportunity> findByStatusIgnoreCase(String status, Pageable pageable);
 
   @EntityGraph(attributePaths = "tags")
   List<Opportunity> findByStatusIgnoreCaseAndCategoryIgnoreCaseOrderByDeadlineAsc(String status, String category);

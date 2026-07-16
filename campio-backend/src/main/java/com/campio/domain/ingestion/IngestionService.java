@@ -347,7 +347,11 @@ public class IngestionService {
   }
 
   private void autoPublishIfReady(OpportunitySource source, RawOpportunity raw, FetchedRawOpportunity item) {
-    if (raw.getNormalizedOpportunityId() != null || item.getDeadline() == null || item.getRawTitle() == null || item.getRawTitle().isBlank()) {
+    if (raw.getNormalizedOpportunityId() != null) {
+      enrichPublishedOpportunity(raw.getNormalizedOpportunityId(), item);
+      return;
+    }
+    if (item.getDeadline() == null || item.getRawTitle() == null || item.getRawTitle().isBlank()) {
       return;
     }
     String category = firstNonBlank(item.getCategory(), source.getCategoryHint());
@@ -373,9 +377,9 @@ public class IngestionService {
     opportunity.setOrganization(organization);
     opportunity.setCategory(category);
     opportunity.setDescription(firstNonBlank(item.getDescription(), item.getRawContent()));
-    opportunity.setRequirements(null);
-    opportunity.setBenefits(null);
-    opportunity.setTarget(null);
+    opportunity.setRequirements(item.getRequirements());
+    opportunity.setBenefits(item.getBenefits());
+    opportunity.setTarget(item.getTarget());
     opportunity.setDeadline(item.getDeadline());
     opportunity.setStartDate(item.getStartDate());
     opportunity.setEndDate(item.getEndDate());
@@ -397,6 +401,44 @@ public class IngestionService {
     raw.setErrorMessage(null);
     raw.setLastSeenAt(LocalDateTime.now());
     rawOpportunityRepository.save(raw);
+  }
+
+  private void enrichPublishedOpportunity(Long opportunityId, FetchedRawOpportunity item) {
+    opportunityRepository.findById(opportunityId).ifPresent(opportunity -> {
+      boolean changed = false;
+      if (hasPlaceholderDescription(opportunity.getDescription()) && hasText(item.getDescription())) {
+        opportunity.setDescription(item.getDescription());
+        changed = true;
+      }
+      if (!hasText(opportunity.getRequirements()) && hasText(item.getRequirements())) {
+        opportunity.setRequirements(item.getRequirements());
+        changed = true;
+      }
+      if (!hasText(opportunity.getBenefits()) && hasText(item.getBenefits())) {
+        opportunity.setBenefits(item.getBenefits());
+        changed = true;
+      }
+      if (!hasText(opportunity.getTarget()) && hasText(item.getTarget())) {
+        opportunity.setTarget(item.getTarget());
+        changed = true;
+      }
+      if (changed) {
+        opportunity.setUpdatedAt(LocalDateTime.now());
+        opportunityRepository.save(opportunity);
+      }
+    });
+  }
+
+  private boolean hasPlaceholderDescription(String value) {
+    return !hasText(value)
+        || value.contains("원본 출처에서 확인")
+        || value.contains("자세한 내용과 신청은")
+        || value.contains("공개 모집중 사업공고입니다")
+        || value.contains("공개 지원사업 공고입니다");
+  }
+
+  private boolean hasText(String value) {
+    return value != null && !value.isBlank();
   }
 
   private OpportunitySource findSource(Long id) {

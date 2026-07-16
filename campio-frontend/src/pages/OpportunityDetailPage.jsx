@@ -19,7 +19,6 @@ import { savedApi } from "../api/savedApi.js";
 import { isApiStatus } from "../api/client.js";
 import { setAuthenticated } from "../app/authSession.js";
 import { useSettings } from "../app/settings.jsx";
-import { isStudentRelevantOpportunity } from "../app/studentOpportunityPolicy.js";
 import { resolveOpportunityLocation } from "../app/opportunityLocation.js";
 import "./pages.css";
 
@@ -45,11 +44,11 @@ export default function OpportunityDetailPage() {
     setLoading(true);
     setError("");
     try {
-      const [detail, allOpportunities, posts, mentorList] = await Promise.all([
-        opportunityApi.detail(id),
-        opportunityApi.list(),
+      const detail = await opportunityApi.detail(id);
+      const [relatedPage, posts, mentorList] = await Promise.all([
+        opportunityApi.search({ page: 0, size: 4, category: detail.category, sort: "deadline" }),
         communityApi.listPosts(),
-        mentorApi.list(),
+        mentorApi.list().catch((err) => isApiStatus(err, 401) || isApiStatus(err, 403) ? [] : Promise.reject(err)),
       ]);
       if (!shouldUpdate()) return;
       setOpportunity(detail);
@@ -69,8 +68,7 @@ export default function OpportunityDetailPage() {
         setStatus("Interested");
       }
       setRelated(
-        allOpportunities
-          .filter(isStudentRelevantOpportunity)
+        relatedPage.content
           .filter((item) => item.id !== detail.id && item.category === detail.category)
           .slice(0, 3)
       );
