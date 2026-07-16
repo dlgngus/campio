@@ -12,13 +12,12 @@ import MentorsPage from "../pages/MentorsPage.jsx";
 import ProfilePage from "../pages/ProfilePage.jsx";
 import AdminOpportunitiesPage from "../pages/AdminOpportunitiesPage.jsx";
 import AdminIngestionPage from "../pages/AdminIngestionPage.jsx";
-import LandingPage from "../pages/LandingPage.jsx";
 import CommunityDetailPage from "../pages/CommunityDetailPage.jsx";
 import MentorDetailPage from "../pages/MentorDetailPage.jsx";
 import AdminMentorsPage from "../pages/AdminMentorsPage.jsx";
 
 const routes = [
-  { path: "/", element: <LandingPage /> },
+  { path: "/", element: <Navigate to="/explore" replace /> },
   { path: "/login", element: <LoginPage /> },
   { path: "/signup", element: <SignupPage /> },
   { path: "/onboarding", element: <OnboardingPage /> },
